@@ -33,6 +33,13 @@ type MonthRow = {
   created_at?: string;
 };
 
+type SettlementRow = {
+  member_id: string;
+  final_amount: number;
+  final_type: "pay" | "receive";
+  paid_amount: number;
+};
+
 const sharedStatusCategories = [
   { key: "wifi", label: "WiFi" },
   { key: "utility", label: "Utility" },
@@ -45,11 +52,13 @@ export default function ReportsView({
   messName,
   monthLabel,
   selectedMonthId,
+  selectedMonthStatus,
   months,
   members,
   meals,
   expenses,
   charges,
+  settlements,
   viewerRole,
   viewerMemberId,
   canExport,
@@ -57,11 +66,13 @@ export default function ReportsView({
   messName: string;
   monthLabel: string;
   selectedMonthId: string;
+  selectedMonthStatus: "open" | "closed";
   months: MonthRow[];
   members: Member[];
   meals: MealEntry[];
   expenses: ExpenseEntry[];
   charges: ChargeRow[];
+  settlements: SettlementRow[];
   viewerRole: "admin" | "manager" | "member";
   viewerMemberId: string;
   canExport: boolean;
@@ -70,6 +81,7 @@ export default function ReportsView({
   const searchParams = useSearchParams();
 
   const isMemberView = viewerRole === "member";
+  const isClosedMonth = selectedMonthStatus === "closed";
 
   const totalMeals = meals.reduce(
     (sum, item) => sum + Number(item.own_meal || 0) + Number(item.guest_meal || 0),
@@ -90,6 +102,17 @@ export default function ReportsView({
 
   const chargeMap = new Map(
     charges.map((item) => [item.member_id, Number(item.rent_amount || 0)])
+  );
+
+  const settlementMap = new Map(
+    settlements.map((item) => [
+      item.member_id,
+      {
+        finalAmount: Number(item.final_amount || 0),
+        finalType: item.final_type,
+        paidAmount: Number(item.paid_amount || 0),
+      },
+    ])
   );
 
   const expenseMap = new Map<string, number>();
@@ -129,7 +152,42 @@ export default function ReportsView({
 
     const mealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const finalBalance = bazarPaid - mealCost - sharedShare - rent;
+    const rawFinalBalance = bazarPaid - mealCost - sharedShare - rent;
+
+    const computedFinalType: "pay" | "receive" =
+      rawFinalBalance >= 0 ? "receive" : "pay";
+    const computedFinalAmount = Math.abs(rawFinalBalance);
+
+    const savedSettlement = settlementMap.get(member.id);
+
+    const settlementFinalType =
+      isClosedMonth && savedSettlement
+        ? savedSettlement.finalType
+        : computedFinalType;
+
+    const settlementFinalAmount =
+      isClosedMonth && savedSettlement
+        ? savedSettlement.finalAmount
+        : computedFinalAmount;
+
+    const paidAmount = isClosedMonth ? Number(savedSettlement?.paidAmount ?? 0) : 0;
+    const remaining = Math.max(settlementFinalAmount - paidAmount, 0);
+
+    const settlementTypeLabel =
+      remaining <= 0
+        ? settlementFinalType === "receive"
+          ? "Received"
+          : "Paid"
+        : settlementFinalType === "receive"
+        ? "Will Receive"
+        : "Will Pay";
+
+    const settlementStatus =
+      remaining <= 0 && settlementFinalAmount > 0
+        ? "Done"
+        : paidAmount > 0
+        ? "Partial"
+        : "Pending";
 
     return {
       id: member.id,
@@ -141,23 +199,32 @@ export default function ReportsView({
       rent,
       mealCost,
       sharedShare,
-      finalBalance,
+      rawFinalBalance,
+      settlementFinalType,
+      settlementFinalAmount,
+      paidAmount,
+      remaining,
+      settlementTypeLabel,
+      settlementStatus,
     };
   });
 
   const totalRent = rows.reduce((sum, row) => sum + Number(row.rent || 0), 0);
 
   const totalWillReceive = rows
-    .filter((row) => row.finalBalance > 0)
-    .reduce((sum, row) => sum + row.finalBalance, 0);
+    .filter((row) => row.rawFinalBalance > 0)
+    .reduce((sum, row) => sum + row.rawFinalBalance, 0);
 
   const totalWillPay = rows
-    .filter((row) => row.finalBalance < 0)
-    .reduce((sum, row) => sum + Math.abs(row.finalBalance), 0);
+    .filter((row) => row.rawFinalBalance < 0)
+    .reduce((sum, row) => sum + Math.abs(row.rawFinalBalance), 0);
 
   const totalCharges = totalSharedBills + totalRent + totalWillReceive;
   const balanceDifference = Math.abs(totalCharges - totalWillPay);
   const isBalanced = balanceDifference < 0.01;
+
+  const totalSettlementPaid = rows.reduce((sum, row) => sum + row.paidAmount, 0);
+  const totalSettlementRemaining = rows.reduce((sum, row) => sum + row.remaining, 0);
 
   const myRow =
     rows.find((row) => row.id === viewerMemberId) ?? {
@@ -170,7 +237,13 @@ export default function ReportsView({
       rent: 0,
       mealCost: 0,
       sharedShare: perMemberSharedCost,
-      finalBalance: 0,
+      rawFinalBalance: 0,
+      settlementFinalType: "pay" as const,
+      settlementFinalAmount: 0,
+      paidAmount: 0,
+      remaining: 0,
+      settlementTypeLabel: "Will Pay",
+      settlementStatus: "Pending",
     };
 
   const handleMonthChange = (monthId: string) => {
@@ -179,12 +252,6 @@ export default function ReportsView({
     router.push(`/reports?${params.toString()}`);
   };
 
-// ✅ Dynamic current month
-  const currentDate = new Date();
-  const monthYear = currentDate.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -192,7 +259,9 @@ export default function ReportsView({
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Monthly Report</h1>
             <p className="mt-2 text-slate-600">
-              <b>{messName} · {monthYear}</b>
+              <b>
+                {messName} · {monthLabel}
+              </b>
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Role: {viewerRole} {canExport ? "· Export allowed" : "· View only"}
@@ -220,37 +289,45 @@ export default function ReportsView({
 
       {isMemberView ? (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">Meal Rate</p>
               <h3 className="mt-2 text-2xl font-bold text-slate-900">
                 ৳ {mealRate.toFixed(2)}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">Current month meal rate</p>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Shared Per Member</p>
-              <h3 className="mt-2 text-2xl font-bold text-slate-900">
-                ৳ {perMemberSharedCost.toFixed(2)}
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Your equal share of shared bills
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{monthLabel} meal rate</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">My Final Status</p>
               <h3
                 className={`mt-2 text-2xl font-bold ${
-                  myRow.finalBalance >= 0 ? "text-green-700" : "text-red-700"
+                  myRow.rawFinalBalance >= 0 ? "text-green-700" : "text-red-700"
                 }`}
               >
-                ৳ {Math.abs(myRow.finalBalance).toFixed(2)}
+                ৳ {Math.abs(myRow.rawFinalBalance).toFixed(2)}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                {myRow.finalBalance >= 0 ? "You will receive" : "You will pay"}
+                {myRow.rawFinalBalance >= 0 ? "You will receive" : "You will pay"}
               </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-500">Paid Amount</p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                ৳ {myRow.paidAmount.toFixed(2)}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {isClosedMonth ? "Updated from payment" : "Available after month close"}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-slate-500">Remaining</p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                ৳ {myRow.remaining.toFixed(2)}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">{myRow.settlementStatus}</p>
             </div>
           </div>
 
@@ -258,7 +335,7 @@ export default function ReportsView({
             <div className="mb-4">
               <h2 className="text-xl font-bold text-slate-900">My Monthly Summary</h2>
               <p className="mt-1 text-sm text-slate-500">
-                You can view your own report details and shared bills status.
+                You can view your own report details and payment-based settlement status.
               </p>
             </div>
 
@@ -313,16 +390,13 @@ export default function ReportsView({
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Final Balance</p>
-                <h3
-                  className={`mt-2 text-xl font-bold ${
-                    myRow.finalBalance >= 0 ? "text-green-700" : "text-red-700"
-                  }`}
-                >
-                  ৳ {Math.abs(myRow.finalBalance).toFixed(2)}
+                <p className="text-sm text-slate-500">Payment Summary</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900">
+                  {myRow.settlementStatus}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  {myRow.finalBalance >= 0 ? "Will Receive" : "Will Pay"}
+                  Paid: ৳ {myRow.paidAmount.toFixed(2)} · Remaining: ৳{" "}
+                  {myRow.remaining.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -376,16 +450,6 @@ export default function ReportsView({
               </table>
             </div>
           </section>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">How My Final Is Calculated</h2>
-            </div>
-
-            <div className="rounded-2xl bg-blue-50 px-4 py-4 text-sm text-blue-800">
-              Final balance = Bazar Paid - Meal Cost - Shared Share - Rent
-            </div>
-          </div>
         </>
       ) : (
         <>
@@ -438,24 +502,12 @@ export default function ReportsView({
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">Total Will Receive</p>
-                <h3 className="mt-2 text-2xl font-bold text-green-700">
-                  ৳ {totalWillReceive.toFixed(2)}
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Sum of all positive balances
-                </p>
-              </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-slate-500">Total Will Pay</p>
+                <p className="text-sm text-slate-500">All members Will Pay</p>
                 <h3 className="mt-2 text-2xl font-bold text-red-700">
                   ৳ {totalWillPay.toFixed(2)}
                 </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Sum of all negative balances
-                </p>
               </div>
             </div>
 
@@ -479,7 +531,7 @@ export default function ReportsView({
                   isBalanced ? "text-green-700" : "text-red-700"
                 }`}
               >
-                Total Will payable = ৳ {totalCharges.toFixed(2)} · Total Will Pay = ৳{" "}
+                Total Charge = ৳ {totalCharges.toFixed(2)} · All members Will Pay = ৳{" "}
                 {totalWillPay.toFixed(2)}
               </p>
 
@@ -598,17 +650,17 @@ export default function ReportsView({
                       <td className="px-3 py-4">৳ {row.sharedShare.toFixed(2)}</td>
                       <td className="px-3 py-4">৳ {row.rent.toFixed(0)}</td>
                       <td className="px-3 py-4 font-semibold">
-                        ৳ {Math.abs(row.finalBalance).toFixed(2)}
+                        ৳ {Math.abs(row.rawFinalBalance).toFixed(2)}
                       </td>
                       <td className="rounded-r-2xl px-3 py-4">
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium ${
-                            row.finalBalance >= 0
+                            row.rawFinalBalance >= 0
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {row.finalBalance >= 0 ? "Will Receive" : "Will Pay"}
+                          {row.rawFinalBalance >= 0 ? "Will Receive" : "Will Pay"}
                         </span>
                       </td>
                     </tr>
@@ -617,6 +669,106 @@ export default function ReportsView({
               </table>
             </div>
           </div>
+
+          {isClosedMonth ? (
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm print:shadow-none">
+              <div className="mb-5">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Closed Month Settlement Summary
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  This section updates automatically based on payment records.
+                </p>
+              </div>
+
+              <div className="mb-5 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Total Paid Amount</p>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                    ৳ {totalSettlementPaid.toFixed(2)}
+                  </h3>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Total Remaining</p>
+                  <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                    ৳ {totalSettlementRemaining.toFixed(2)}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Members will pay
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">Month Status</p>
+                  <h3 className="mt-2 text-2xl font-bold text-teal-700">Closed</h3>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-left text-sm text-slate-500">
+                      <th className="px-3 py-2 font-medium">Name</th>
+                      <th className="px-3 py-2 font-medium">Final Type</th>
+                      <th className="px-3 py-2 font-medium">Final Amount</th>
+                      <th className="px-3 py-2 font-medium">Paid Amount</th>
+                      <th className="px-3 py-2 font-medium">Remaining</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.id} className="rounded-2xl bg-slate-50 text-sm text-slate-700">
+                        <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                          {row.name}
+                        </td>
+
+                        <td className="px-3 py-4">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              row.settlementTypeLabel === "Received"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : row.settlementTypeLabel === "Paid"
+                                ? "bg-blue-100 text-blue-700"
+                                : row.settlementFinalType === "receive"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {row.settlementTypeLabel}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-4 font-semibold">
+                          ৳ {row.settlementFinalAmount.toFixed(2)}
+                        </td>
+
+                        <td className="px-3 py-4">৳ {row.paidAmount.toFixed(2)}</td>
+
+                        <td className="px-3 py-4">৳ {row.remaining.toFixed(2)}</td>
+
+                        <td className="rounded-r-2xl px-3 py-4">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              row.settlementStatus === "Done"
+                                ? "bg-green-100 text-green-700"
+                                : row.settlementStatus === "Partial"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-slate-200 text-slate-700"
+                            }`}
+                          >
+                            {row.settlementStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </div>

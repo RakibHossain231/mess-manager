@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  CircleDollarSign,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -41,6 +42,11 @@ const navItems = [
     href: "/reports",
     icon: FileText,
   },
+  {
+    label: "Closed Month Settlement",
+    href: "/closed-month-settlement",
+    icon: CircleDollarSign,
+  },
 ];
 
 export default function Sidebar({
@@ -74,7 +80,6 @@ export default function Sidebar({
         mobile ? "w-full" : "sticky top-0 hidden lg:flex"
       )}
     >
-      {/* Header */}
       <div className="border-b border-slate-200 px-6 py-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -100,7 +105,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="space-y-2 px-4 py-6">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -125,10 +129,8 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* Spacer to keep account section in the marked middle area */}
       <div className="flex-1" />
 
-      {/* Account Section */}
       <div className="mt-4 px-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-3">
           <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -162,7 +164,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="border-t border-slate-200 p-4">
         <div className="rounded-3xl bg-slate-50 p-4">
           <p className="text-sm font-semibold text-slate-900">Current Month</p>
@@ -172,7 +173,7 @@ export default function Sidebar({
           </p>
 
           <p className="mt-3 text-xs text-slate-500">
-            Track meals, bazar, and monthly reports from one place.
+            Track meals, bazar, reports, and closed month settlements from one place.
           </p>
         </div>
       </div>

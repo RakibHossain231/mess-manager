@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
-import ReportsView from "@/app/reports/reports-view";
+import { createClient } from "@/lib/supabase/server";
 import { getUserGroupContext } from "@/lib/group-access";
+import ClosedMonthSettlementView from "./closed-month-settlement-view";
 
 type Member = {
   id: string;
@@ -42,7 +42,7 @@ type SettlementRow = {
   paid_amount: number;
 };
 
-export default async function ReportsPage({
+export default async function ClosedMonthSettlementPage({
   searchParams,
 }: {
   searchParams?: Promise<{ month?: string }>;
@@ -70,26 +70,26 @@ export default async function ReportsPage({
     .from("months")
     .select("id, label, status, created_at")
     .eq("group_id", group.id)
+    .eq("status", "closed")
     .order("created_at", { ascending: false });
 
-  const months: MonthRow[] = (monthsData ?? []) as MonthRow[];
+  const closedMonths: MonthRow[] = (monthsData ?? []) as MonthRow[];
 
-  if (months.length === 0) {
+  if (closedMonths.length === 0) {
     return (
       <AppShell>
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Monthly Report</h1>
-          <p className="mt-2 text-slate-600">No month found.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Closed Month Settlement</h1>
+          <p className="mt-2 text-slate-600">
+            No closed month found. Close a month first, then settlement will appear here.
+          </p>
         </div>
       </AppShell>
     );
   }
 
-  const openMonth = months.find((item) => item.status === "open");
   const selectedMonth =
-    months.find((item) => item.id === selectedMonthIdFromQuery) ??
-    openMonth ??
-    months[0];
+    closedMonths.find((item) => item.id === selectedMonthIdFromQuery) ?? closedMonths[0];
 
   const { data: membersData } = await supabase
     .from("members")
@@ -127,20 +127,17 @@ export default async function ReportsPage({
 
   return (
     <AppShell>
-      <ReportsView
-        messName={group.name}
+      <ClosedMonthSettlementView
+        groupId={group.id}
         monthLabel={selectedMonth.label}
         selectedMonthId={selectedMonth.id}
-        selectedMonthStatus={selectedMonth.status}
-        months={months}
+        months={closedMonths}
         members={members}
         meals={meals}
         expenses={expenses}
         charges={charges}
         settlements={settlements}
         viewerRole={member.role}
-        viewerMemberId={member.id}
-        canExport={member.role === "admin"}
       />
     </AppShell>
   );
