@@ -129,11 +129,11 @@ export default function Sidebar({
       <div className="flex-1" />
 
       {/* Account Section */}
-      {/* <div className="px-4 pb-4">
+      <div className="mt-4 px-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-3">
           <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Account
-          </p> */}
+          </p>
 
           <div className="mt-2 space-y-1">
             <Link
@@ -159,8 +159,8 @@ export default function Sidebar({
               <span>Logout</span>
             </button>
           </div>
-        {/* </div>
-      </div> */}
+        </div>
+      </div>
 
       {/* Footer */}
       <div className="border-t border-slate-200 p-4">
