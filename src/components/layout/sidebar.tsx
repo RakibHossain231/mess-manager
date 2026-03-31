@@ -167,13 +167,8 @@ export default function Sidebar({
       <div className="border-t border-slate-200 p-4">
         <div className="rounded-3xl bg-slate-50 p-4">
           <p className="text-sm font-semibold text-slate-900">Current Month</p>
-
           <p className="mt-1 text-sm text-slate-600">
             <b>{monthYear}</b>
-          </p>
-
-          <p className="mt-3 text-xs text-slate-500">
-            Track meals, bazar, reports, and closed month settlements from one place.
           </p>
         </div>
       </div>
