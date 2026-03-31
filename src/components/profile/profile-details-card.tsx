@@ -56,6 +56,11 @@ export default function ProfileDetailsCard({
   monthLabel,
 }: ProfileDetailsCardProps) {
   const initial = name?.trim()?.charAt(0)?.toUpperCase() || "U";
+  const currentDate = new Date();
+  const monthYear = currentDate.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -88,7 +93,7 @@ export default function ProfileDetailsCard({
             Current Open Month
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-900">
-            {monthLabel || "No open month"}
+            {monthYear || "No open month"}
           </p>
         </div>
       </div>
@@ -114,10 +119,6 @@ export default function ProfileDetailsCard({
         <InfoItem
           label="Account Status"
           value="Active"
-        />
-        <InfoItem
-          label="Current Open Month"
-          value={monthLabel || "No open month"}
         />
       </div>
     </section>
