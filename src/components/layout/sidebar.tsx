@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FileText,
   LayoutDashboard,
+  LogOut,
   Receipt,
+  UserCircle2,
   Users,
   UtensilsCrossed,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   {
@@ -48,12 +51,21 @@ export default function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const currentDate = new Date();
   const monthYear = currentDate.toLocaleString("en-US", {
     month: "long",
     year: "numeric",
   });
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    onClose?.();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -89,7 +101,7 @@ export default function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 px-4 py-6">
+      <nav className="space-y-2 px-4 py-6">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -112,6 +124,43 @@ export default function Sidebar({
           );
         })}
       </nav>
+
+      {/* Spacer to keep account section in the marked middle area */}
+      <div className="flex-1" />
+
+      {/* Account Section */}
+      {/* <div className="px-4 pb-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-3">
+          <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Account
+          </p> */}
+
+          <div className="mt-2 space-y-1">
+            <Link
+              href="/profile"
+              onClick={mobile ? onClose : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition",
+                pathname === "/profile"
+                  ? "bg-teal-700 text-white shadow-sm"
+                  : "text-slate-700 hover:bg-slate-100"
+              )}
+            >
+              <UserCircle2 className="h-5 w-5" />
+              <span>My Profile</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        {/* </div>
+      </div> */}
 
       {/* Footer */}
       <div className="border-t border-slate-200 p-4">
