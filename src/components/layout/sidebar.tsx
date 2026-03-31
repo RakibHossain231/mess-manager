@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  FileText,
   LayoutDashboard,
+  Receipt,
   Users,
   UtensilsCrossed,
-  Receipt,
-  FileText,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +40,15 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  mobile = false,
+  onClose,
+}: {
+  mobile?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
 
-  // ✅ Dynamic current month
   const currentDate = new Date();
   const monthYear = currentDate.toLocaleString("en-US", {
     month: "long",
@@ -50,21 +56,35 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0">
+    <aside
+      className={cn(
+        "flex h-screen w-72 shrink-0 flex-col border-r border-slate-200 bg-white",
+        mobile ? "w-full" : "sticky top-0 hidden lg:flex"
+      )}
+    >
       {/* Header */}
       <div className="border-b border-slate-200 px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-700 text-lg font-bold text-white">
-            M
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-700 text-lg font-bold text-white">
+              M
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Mess Manager</h2>
+              <p className="text-sm text-slate-500">Smart monthly accounting</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">
-              Mess Manager
-            </h2>
-            <p className="text-sm text-slate-500">
-              Smart monthly accounting
-            </p>
-          </div>
+
+          {mobile && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close sidebar"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 transition hover:bg-slate-100 lg:hidden"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -78,6 +98,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={mobile ? onClose : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
                 isActive
@@ -95,9 +116,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="border-t border-slate-200 p-4">
         <div className="rounded-3xl bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-900">
-            Current Month
-          </p>
+          <p className="text-sm font-semibold text-slate-900">Current Month</p>
 
           <p className="mt-1 text-sm text-slate-600">
             <b>{monthYear}</b>
