@@ -20,27 +20,12 @@ type ChargeRow = {
   rent_amount: number;
 };
 
-type EditableState = Record<
-  string,
-  {
-    defaultRent: string;
-    monthRent: string;
-  }
->;
-// ✅ Dynamic current month
-  const currentDate = new Date();
-  const monthYear = currentDate.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-
 export default function MembersManager({
   groupId,
   members,
   monthId,
   charges,
   currentUserRole,
-  currentUserMemberId,
 }: {
   groupId: string;
   members: Member[];
@@ -53,37 +38,19 @@ export default function MembersManager({
   const supabase = createClient();
 
   const isAdmin = currentUserRole === "admin";
-  const isMember = currentUserRole === "member";
 
-  const rentVisibleMembers = useMemo(() => {
-    if (isMember) {
-      return members.filter((member) => member.id === currentUserMemberId);
-    }
-    return members;
-  }, [isMember, members, currentUserMemberId]);
+  const currentDate = new Date();
+  const monthYear = currentDate.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
-  const initialState = useMemo<EditableState>(() => {
-    const chargeMap = new Map(charges.map((item) => [item.member_id, item]));
+  const chargeMap = useMemo(() => {
+    return new Map(charges.map((item) => [item.member_id, item]));
+  }, [charges]);
 
-    const result: EditableState = {};
-
-    for (const member of members) {
-      const charge = chargeMap.get(member.id);
-
-      result[member.id] = {
-        defaultRent: String(Number(member.monthly_rent ?? 0)),
-        monthRent: String(
-          Number(charge?.rent_amount ?? member.monthly_rent ?? 0)
-        ),
-      };
-    }
-
-    return result;
-  }, [members, charges]);
-
-  const [formData, setFormData] = useState<EditableState>(initialState);
   const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
   const [newMobile, setNewMobile] = useState("");
@@ -100,29 +67,21 @@ export default function MembersManager({
     mobile: "",
     nid: "",
     role: "member" as "admin" | "manager" | "member",
+    defaultRent: "0",
+    monthRent: "0",
   });
 
-  function updateField(
-    memberId: string,
-    field: keyof EditableState[string],
-    value: string
-  ) {
-    setFormData((prev) => ({
-      ...prev,
-      [memberId]: {
-        ...prev[memberId],
-        [field]: value,
-      },
-    }));
-  }
-
   function startEdit(member: Member) {
+    const charge = chargeMap.get(member.id);
+
     setEditingId(member.id);
     setEditData({
       name: member.name,
       mobile: member.mobile_number,
       nid: member.nid_number || "",
       role: member.role,
+      defaultRent: String(Number(member.monthly_rent ?? 0)),
+      monthRent: String(Number(charge?.rent_amount ?? member.monthly_rent ?? 0)),
     });
     setMsg("");
   }
@@ -134,6 +93,8 @@ export default function MembersManager({
       mobile: "",
       nid: "",
       role: "member",
+      defaultRent: "0",
+      monthRent: "0",
     });
   }
 
@@ -148,6 +109,8 @@ export default function MembersManager({
     const cleanName = editData.name.trim();
     const cleanMobile = editData.mobile.trim();
     const cleanNid = editData.nid.trim();
+    const defaultRent = Number(editData.defaultRent || 0);
+    const monthRent = Number(editData.monthRent || 0);
 
     if (!cleanName) {
       setMsg("Member name is required.");
@@ -156,6 +119,11 @@ export default function MembersManager({
 
     if (!cleanMobile) {
       setMsg("Mobile number is required.");
+      return;
+    }
+
+    if (defaultRent < 0 || monthRent < 0) {
+      setMsg("Rent cannot be negative.");
       return;
     }
 
@@ -177,6 +145,8 @@ export default function MembersManager({
       return;
     }
 
+    setLoadingId(memberId);
+
     const { error } = await supabase
       .from("members")
       .update({
@@ -184,71 +154,40 @@ export default function MembersManager({
         mobile_number: cleanMobile,
         nid_number: cleanNid || null,
         role: editData.role,
+        monthly_rent: defaultRent,
       })
       .eq("id", memberId);
 
     if (error) {
-      setMsg(error.message);
-      return;
-    }
-
-    cancelEdit();
-    setMsg("Member updated successfully.");
-    router.refresh();
-  }
-
-  async function handleSaveRent() {
-    setMsg("");
-
-    if (!isAdmin) {
-      setMsg("Only admin can edit rent.");
-      return;
-    }
-
-    setLoading(true);
-
-    const memberUpdates = members.map((member) =>
-      supabase
-        .from("members")
-        .update({
-          monthly_rent: Number(formData[member.id]?.defaultRent || 0),
-        })
-        .eq("id", member.id)
-    );
-
-    const results = await Promise.all(memberUpdates);
-    const error = results.find((r) => r.error)?.error;
-
-    if (error) {
-      setLoading(false);
+      setLoadingId(null);
       setMsg(error.message);
       return;
     }
 
     if (monthId) {
-      const payload = members
-        .filter((member) => member.is_active)
-        .map((member) => ({
-          month_id: monthId,
-          member_id: member.id,
-          rent_amount: Number(formData[member.id]?.monthRent || 0),
-        }));
-
       const { error: chargeError } = await supabase
         .from("member_monthly_charges")
-        .upsert(payload, {
-          onConflict: "month_id,member_id",
-        });
+        .upsert(
+          {
+            month_id: monthId,
+            member_id: memberId,
+            rent_amount: monthRent,
+          },
+          {
+            onConflict: "month_id,member_id",
+          }
+        );
 
       if (chargeError) {
-        setLoading(false);
+        setLoadingId(null);
         setMsg(chargeError.message);
         return;
       }
     }
 
-    setLoading(false);
-    setMsg("Rent updated successfully.");
+    setLoadingId(null);
+    cancelEdit();
+    setMsg("Member updated successfully.");
     router.refresh();
   }
 
@@ -267,6 +206,11 @@ export default function MembersManager({
 
     if (!newMobile.trim()) {
       setMsg("Mobile number is required.");
+      return;
+    }
+
+    if (Number(newRent || 0) < 0) {
+      setMsg("House rent cannot be negative.");
       return;
     }
 
@@ -375,7 +319,8 @@ export default function MembersManager({
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Members</h1>
         <p className="mt-2 text-slate-600">
-          Member info, status, and current month rent. Current month: <b>{monthYear}</b>
+          Member info, status, and current month rent. Current month:{" "}
+          <b>{monthYear}</b>
         </p>
       </div>
 
@@ -467,10 +412,15 @@ export default function MembersManager({
       ) : null}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">Member Information</h2>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold text-slate-900">Member Information</h2>
+          <p className="text-sm text-slate-500">
+            Current month rent: <span className="font-semibold">{monthYear}</span>
+          </p>
+        </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-y-3">
+          <table className="min-w-[980px] border-separate border-spacing-y-3">
             <thead>
               <tr className="text-left text-sm text-slate-500">
                 <th className="px-3 py-2">Name</th>
@@ -484,225 +434,180 @@ export default function MembersManager({
             </thead>
 
             <tbody>
-              {members.map((member) => (
-                <tr key={member.id} className="bg-slate-50 text-sm">
-                  <td className="px-3 py-3">
-                    {editingId === member.id ? (
-                      <input
-                        value={editData.name}
-                        onChange={(e) =>
-                          setEditData((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
-                      />
-                    ) : (
-                      <span className="font-semibold text-slate-900">
-                        {member.name}
-                      </span>
-                    )}
-                  </td>
+              {members.map((member) => {
+                const currentMonthRent =
+                  chargeMap.get(member.id)?.rent_amount ?? member.monthly_rent ?? 0;
 
-                  <td className="px-3 py-3">
-                    {editingId === member.id ? (
-                      <input
-                        value={editData.mobile}
-                        onChange={(e) =>
-                          setEditData((prev) => ({
-                            ...prev,
-                            mobile: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
-                      />
-                    ) : (
-                      member.mobile_number
-                    )}
-                  </td>
+                return (
+                  <tr key={member.id} className="bg-slate-50 text-sm">
+                    <td className="px-3 py-3">
+                      {editingId === member.id ? (
+                        <input
+                          value={editData.name}
+                          onChange={(e) =>
+                            setEditData((prev) => ({
+                              ...prev,
+                              name: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      ) : (
+                        <span className="font-semibold text-slate-900">
+                          {member.name}
+                        </span>
+                      )}
+                    </td>
 
-                  <td className="px-3 py-3">
-                    {editingId === member.id ? (
-                      <input
-                        value={editData.nid}
-                        onChange={(e) =>
-                          setEditData((prev) => ({
-                            ...prev,
-                            nid: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
-                      />
-                    ) : (
-                      member.nid_number || "-"
-                    )}
-                  </td>
+                    <td className="px-3 py-3">
+                      {editingId === member.id ? (
+                        <input
+                          value={editData.mobile}
+                          onChange={(e) =>
+                            setEditData((prev) => ({
+                              ...prev,
+                              mobile: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      ) : (
+                        member.mobile_number
+                      )}
+                    </td>
 
-                  <td className="px-3 py-3">
-                    {editingId === member.id ? (
-                      <select
-                        value={editData.role}
-                        onChange={(e) =>
-                          setEditData((prev) => ({
-                            ...prev,
-                            role: e.target.value as "admin" | "manager" | "member",
-                          }))
-                        }
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2"
+                    <td className="px-3 py-3">
+                      {editingId === member.id ? (
+                        <input
+                          value={editData.nid}
+                          onChange={(e) =>
+                            setEditData((prev) => ({
+                              ...prev,
+                              nid: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      ) : (
+                        member.nid_number || "-"
+                      )}
+                    </td>
+
+                    <td className="px-3 py-3">
+                      {editingId === member.id ? (
+                        <select
+                          value={editData.role}
+                          onChange={(e) =>
+                            setEditData((prev) => ({
+                              ...prev,
+                              role: e.target.value as
+                                | "admin"
+                                | "manager"
+                                | "member",
+                            }))
+                          }
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="manager">Manager</option>
+                          <option value="member">Member</option>
+                        </select>
+                      ) : (
+                        <span className="capitalize">{member.role}</span>
+                      )}
+                    </td>
+
+                    <td className="px-3 py-3">
+                      {editingId === member.id ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={editData.defaultRent}
+                          onChange={(e) =>
+                            setEditData((prev) => ({
+                              ...prev,
+                              defaultRent: e.target.value,
+                            }))
+                          }
+                          className="w-28 rounded-xl border border-slate-300 px-3 py-2"
+                        />
+                      ) : (
+                        `৳ ${Number(member.monthly_rent).toFixed(0)}`
+                      )}
+                    </td>
+
+                    <td className="px-3 py-3">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          member.is_active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-slate-200 text-slate-700"
+                        }`}
                       >
-                        <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="member">Member</option>
-                      </select>
-                    ) : (
-                      <span className="capitalize">{member.role}</span>
-                    )}
-                  </td>
+                        {member.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
 
-                  <td className="px-3 py-3">
-                    ৳ {Number(member.monthly_rent).toFixed(0)}
-                  </td>
+                    <td className="px-3 py-3">
+                      {isAdmin ? (
+                        <div className="flex flex-wrap gap-2">
+                          {editingId === member.id ? (
+                            <>
+                              <button
+                                onClick={() => handleSaveEdit(member.id, member.role)}
+                                disabled={loadingId === member.id}
+                                className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {loadingId === member.id ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                disabled={loadingId === member.id}
+                                className="rounded-xl bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => startEdit(member)}
+                                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
+                              >
+                                Edit
+                              </button>
 
-                  <td className="px-3 py-3">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        member.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {member.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {isAdmin ? (
-                      <div className="flex flex-wrap gap-2">
-                        {editingId === member.id ? (
-                          <>
-                            <button
-                              onClick={() => handleSaveEdit(member.id, member.role)}
-                              className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-semibold text-white"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="rounded-xl bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEdit(member)}
-                              className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                handleDeactivate(
-                                  member.id,
-                                  member.is_active,
-                                  member.role
-                                )
-                              }
-                              className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
-                                member.is_active
-                                  ? "border border-red-200 bg-red-50 text-red-600"
-                                  : "border border-green-200 bg-green-50 text-green-700"
-                              }`}
-                            >
-                              {member.is_active ? "Deactivate" : "Activate"}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-500">View only</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">
-          {isMember ? "My Current Month Rent" : "Current Month Rent"}
-        </h2>
-
-        <div className="mt-5 overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-y-3">
-            <thead>
-              <tr className="text-left text-sm text-slate-500">
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">House Rent</th>
-                <th className="px-3 py-2">Current Month House Rent</th>
-                <th className="px-3 py-2">Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {rentVisibleMembers.map((member) => (
-                <tr key={member.id} className="bg-slate-50 text-sm">
-                  <td className="px-3 py-3 font-semibold text-slate-900">
-                    {member.name}
-                  </td>
-
-                  <td className="px-3 py-3 capitalize">{member.role}</td>
-
-                  <td className="px-3 py-3">
-                    <input
-                      type="number"
-                      value={formData[member.id]?.defaultRent}
-                      onChange={(e) =>
-                        updateField(member.id, "defaultRent", e.target.value)
-                      }
-                      disabled={!isAdmin}
-                      className="w-24 rounded-xl border border-slate-300 px-2 py-1 disabled:bg-slate-100"
-                    />
-                  </td>
-
-                  <td className="px-3 py-3">
-                    <input
-                      type="number"
-                      value={formData[member.id]?.monthRent}
-                      onChange={(e) =>
-                        updateField(member.id, "monthRent", e.target.value)
-                      }
-                      disabled={!isAdmin || !monthId || !member.is_active}
-                      className="w-28 rounded-xl border border-slate-300 px-2 py-1 disabled:bg-slate-100"
-                    />
-                  </td>
-
-                  <td className="px-3 py-3">
-                    {member.is_active ? "Active" : "Inactive"}
-                  </td>
-                </tr>
-              ))}
+                              <button
+                                onClick={() =>
+                                  handleDeactivate(
+                                    member.id,
+                                    member.is_active,
+                                    member.role
+                                  )
+                                }
+                                className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
+                                  member.is_active
+                                    ? "border border-red-200 bg-red-50 text-red-600"
+                                    : "border border-green-200 bg-green-50 text-green-700"
+                                }`}
+                              >
+                                {member.is_active ? "Deactivate" : "Activate"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">View only</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {!isMember ? (
-          <button
-            onClick={handleSaveRent}
-            disabled={!isAdmin || loading}
-            className="mt-6 rounded-2xl bg-green-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "Saving..." : "Save Rent"}
-          </button>
-        ) : null}
-
-        {msg && <p className="mt-3 text-sm text-slate-700">{msg}</p>}
+        {msg && <p className="mt-4 text-sm text-slate-700">{msg}</p>}
       </section>
     </div>
   );
