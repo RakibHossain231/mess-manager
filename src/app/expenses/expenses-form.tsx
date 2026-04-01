@@ -307,60 +307,55 @@ export default function ExpensesForm({
         </p>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Monthly Shared Bills</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Admin enters these once per month. Later they can update them.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 md:min-w-[220px]">
-            <p className="text-sm text-slate-500">Shared Bills</p>
-            <h3 className="mt-1 text-2xl font-bold text-slate-900">
-              ৳ {totalSharedBills.toFixed(0)}
-            </h3>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {sharedCategories.map((item) => (
-            <div key={item.key}>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
-                {item.label}
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={sharedValues[item.key] || "0"}
-                onChange={(e) => updateSharedValue(item.key, e.target.value)}
-                disabled={!isAdmin}
-                className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition disabled:bg-slate-100 focus:border-teal-600"
-              />
+      {isAdmin ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Monthly Shared Bills</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Admin enters these once per month. Later they can update them.
+              </p>
             </div>
-          ))}
-        </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button
-            onClick={handleSaveSharedBills}
-            disabled={!isAdmin || sharedLoading}
-            className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {sharedLoading ? "Saving..." : "Save Shared Bills"}
-          </button>
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 md:min-w-[220px]">
+              <p className="text-sm text-slate-500">Shared Bills</p>
+              <h3 className="mt-1 text-2xl font-bold text-slate-900">
+                ৳ {totalSharedBills.toFixed(0)}
+              </h3>
+            </div>
+          </div>
 
-          {!isAdmin ? (
-            <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
-              Only admin can edit shared bills.
-            </p>
-          ) : null}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {sharedCategories.map((item) => (
+              <div key={item.key}>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  {item.label}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={sharedValues[item.key] || "0"}
+                  onChange={(e) => updateSharedValue(item.key, e.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600"
+                />
+              </div>
+            ))}
+          </div>
 
-          {sharedMsg ? <p className="text-sm text-slate-700">{sharedMsg}</p> : null}
-        </div>
-      </section>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleSaveSharedBills}
+              disabled={sharedLoading}
+              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {sharedLoading ? "Saving..." : "Save Shared Bills"}
+            </button>
+
+            {sharedMsg ? <p className="text-sm text-slate-700">{sharedMsg}</p> : null}
+          </div>
+        </section>
+      ) : null}
 
       {canManageBazar ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
