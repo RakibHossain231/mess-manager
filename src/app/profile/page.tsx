@@ -39,6 +39,7 @@ export default async function ProfilePage() {
         />
 
         <ProfileDetailsCard
+          memberId={member.id}
           name={member.name}
           role={member.role}
           email={user.email ?? null}
