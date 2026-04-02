@@ -20,6 +20,8 @@ type ExpenseItem = {
     | "electricity"
     | "gas"
     | "bua"
+    | "moyla"
+    | "pani"
     | "other";
   amount: number;
   note: string | null;

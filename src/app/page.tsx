@@ -122,6 +122,8 @@ export default async function HomePage() {
     electricity: "Electricity",
     gas: "Gas",
     bua: "Bua",
+    moyla: "Molya",
+    pani: "Pani"
   };
 
   const activeSharedBillNames = Array.from(
