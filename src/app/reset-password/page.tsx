@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ResetPasswordPage() {
-  const supabase = createClient();
+function ResetPasswordContent() {
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -18,60 +18,60 @@ export default function ResetPasswordPage() {
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
 
- useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  async function prepareRecoverySession() {
-    setChecking(true);
-    setErrorText("");
+    async function prepareRecoverySession() {
+      setChecking(true);
+      setErrorText("");
 
-    const code = searchParams.get("code");
+      const code = searchParams.get("code");
 
-    if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (!mounted) return;
+
+        if (error) {
+          setReady(false);
+          setChecking(false);
+          setErrorText("Invalid or expired reset link.");
+          return;
+        }
+
+        setReady(true);
+        setChecking(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getSession();
 
       if (!mounted) return;
 
       if (error) {
         setReady(false);
         setChecking(false);
-        setErrorText("Invalid or expired reset link.");
+        setErrorText(error.message);
         return;
       }
 
-      setReady(true);
-      setChecking(false);
-      return;
-    }
+      if (data.session) {
+        setReady(true);
+        setChecking(false);
+        return;
+      }
 
-    const { data, error } = await supabase.auth.getSession();
-
-    if (!mounted) return;
-
-    if (error) {
       setReady(false);
       setChecking(false);
-      setErrorText(error.message);
-      return;
+      setErrorText("Invalid or expired reset link.");
     }
 
-    if (data.session) {
-      setReady(true);
-      setChecking(false);
-      return;
-    }
+    prepareRecoverySession();
 
-    setReady(false);
-    setChecking(false);
-    setErrorText("Invalid or expired reset link.");
-  }
-
-  prepareRecoverySession();
-
-  return () => {
-    mounted = false;
-  };
-}, [searchParams, supabase]);
+    return () => {
+      mounted = false;
+    };
+  }, [searchParams, supabase]);
 
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -191,5 +191,30 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function ResetPasswordFallback() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-2xl font-bold text-slate-900">Reset Password</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Enter your new password below.
+        </p>
+
+        <p className="mt-6 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          Checking reset link...
+        </p>
+      </div>
+    </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
