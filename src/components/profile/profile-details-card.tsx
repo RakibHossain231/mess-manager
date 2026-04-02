@@ -125,10 +125,10 @@ export default function ProfileDetailsCard({
   const [message, setMessage] = useState("");
 
   const [formData, setFormData] = useState({
-    name: name || "",
+    name: name || "Empty",
     email: email || "",
     mobileNumber: mobileNumber || "",
-    nidNumber: nidNumber || "",
+    nidNumber: nidNumber || "Empty",
   });
 
   const currentOpenMonthText = useMemo(() => {
@@ -182,6 +182,10 @@ export default function ProfileDetailsCard({
 
     if (!trimmedEmail) {
       setMessage("Email is required.");
+      return;
+    }
+     if (!trimmedMobile) {
+      setMessage("Mobile Number is required.");
       return;
     }
 
