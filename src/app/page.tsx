@@ -116,6 +116,32 @@ export default async function HomePage() {
   const perMemberSharedCost =
     totalMembers > 0 ? totalSharedBills / totalMembers : 0;
 
+  const sharedBillLabelMap: Record<string, string> = {
+    wifi: "WiFi",
+    utility: "Utility",
+    electricity: "Electricity",
+    gas: "Gas",
+    bua: "Bua",
+  };
+
+  const activeSharedBillNames = Array.from(
+    new Set(
+      expenseEntries
+        .filter(
+          (item) =>
+            item.category !== "bazar" &&
+            Number(item.amount || 0) > 0 &&
+            sharedBillLabelMap[item.category]
+        )
+        .map((item) => sharedBillLabelMap[item.category])
+    )
+  );
+
+  const sharedBillsSubtitle =
+    activeSharedBillNames.length > 0
+      ? activeSharedBillNames.join(", ")
+      : "No shared bills added";
+
   const memberSummaries = members.map((memberItem) => {
     const memberMeals = mealEntries.filter(
       (item) => item.member_id === memberItem.id
@@ -143,8 +169,7 @@ export default async function HomePage() {
 
     const estimatedMealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const estimatedBalance =
-      bazarPaid - estimatedMealCost - sharedShare;
+    const estimatedBalance = bazarPaid - estimatedMealCost - sharedShare;
 
     return {
       id: memberItem.id,
@@ -188,7 +213,6 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        {/* summary cards */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <SummaryCard
             title="Total Members"
@@ -217,7 +241,7 @@ export default async function HomePage() {
           <SummaryCard
             title="Shared Bills"
             value={`৳ ${totalSharedBills.toFixed(0)}`}
-            subtitle="WiFi, utility, electricity, gas, bua"
+            subtitle={sharedBillsSubtitle}
             icon={Receipt}
           />
           <SummaryCard
@@ -228,7 +252,6 @@ export default async function HomePage() {
           />
         </div>
 
-        {/* table */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <SectionTitle
             title="Member Live Summary"
@@ -264,18 +287,12 @@ export default async function HomePage() {
                     <td className="rounded-l-2xl px-4 py-4 font-semibold text-slate-900">
                       {item.name}
                     </td>
-                    <td className="px-4 py-4">
-                      {item.ownMeal.toFixed(1)}
-                    </td>
-                    <td className="px-4 py-4">
-                      {item.guestMeal.toFixed(1)}
-                    </td>
+                    <td className="px-4 py-4">{item.ownMeal.toFixed(1)}</td>
+                    <td className="px-4 py-4">{item.guestMeal.toFixed(1)}</td>
                     <td className="px-4 py-4 font-medium">
                       {item.totalMeal.toFixed(1)}
                     </td>
-                    <td className="px-4 py-4">
-                      ৳ {item.bazarPaid.toFixed(0)}
-                    </td>
+                    <td className="px-4 py-4">৳ {item.bazarPaid.toFixed(0)}</td>
 
                     {isPrivileged && (
                       <>
