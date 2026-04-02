@@ -14,15 +14,15 @@ type ExpenseItem = {
   id: string;
   entry_date: string;
   category:
-    | "bazar"
-    | "wifi"
-    | "utility"
-    | "electricity"
-    | "gas"
-    | "bua"
-    | "moyla"
-    | "pani"
-    | "other";
+  | "bazar"
+  | "wifi"
+  | "utility"
+  | "electricity"
+  | "gas"
+  | "bua"
+  | "moyla"
+  | "pani"
+  | "other";
   amount: number;
   note: string | null;
   paid_by_member_id: string;
@@ -125,7 +125,9 @@ export default function ExpensesForm({
   const [sharedMsg, setSharedMsg] = useState("");
   const [sharedLoading, setSharedLoading] = useState(false);
 
-  const [entryDate, setEntryDate] = useState("");
+  const [entryDate, setEntryDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
   const [paidByMemberId, setPaidByMemberId] = useState(currentUserMemberId);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -442,8 +444,8 @@ export default function ExpensesForm({
               {bazarLoading
                 ? "Saving..."
                 : editingBazarId
-                ? "Update"
-                : "Save"}
+                  ? "Update"
+                  : "Save"}
             </button>
 
             {editingBazarId && (

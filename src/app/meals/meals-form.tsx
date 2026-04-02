@@ -43,7 +43,9 @@ export default function MealsForm({
   const canManageMeals =
     currentUserRole === "admin" || currentUserRole === "manager";
 
-  const [entryDate, setEntryDate] = useState("");
+  const [entryDate, setEntryDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
   const [memberId, setMemberId] = useState(members[0]?.id ?? "");
   const [ownMeal, setOwnMeal] = useState("");
   const [guestMeal, setGuestMeal] = useState("");
@@ -510,9 +512,8 @@ export default function MealsForm({
                               {Number(item.guest_meal || 0).toFixed(1)}
                             </td>
                             <td
-                              className={`px-3 py-3 font-semibold text-slate-900 ${
-                                canManageMeals ? "" : "rounded-r-2xl"
-                              }`}
+                              className={`px-3 py-3 font-semibold text-slate-900 ${canManageMeals ? "" : "rounded-r-2xl"
+                                }`}
                             >
                               {total.toFixed(1)}
                             </td>
