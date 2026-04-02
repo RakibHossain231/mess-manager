@@ -13,40 +13,40 @@ export default function ForgotPasswordPage() {
   const [errorText, setErrorText] = useState("");
 
   async function handleSendReset(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setErrorText("");
-    setMessageText("");
+  e.preventDefault();
+  setLoading(true);
+  setErrorText("");
+  setMessageText("");
 
-    const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim();
 
-    if (!trimmedEmail) {
-      setLoading(false);
-      setErrorText("Email is required.");
-      return;
-    }
-
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/reset-password`
-        : undefined;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo,
-    });
-
+  if (!trimmedEmail) {
     setLoading(false);
-
-    if (error) {
-      setErrorText(error.message);
-      return;
-    }
-
-    setMessageText(
-      "If this email is registered, a password reset link has been sent."
-    );
-    setEmail("");
+    setErrorText("Email is required.");
+    return;
   }
+
+  const redirectTo =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/reset-password`
+      : undefined;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo,
+  });
+
+  setLoading(false);
+
+  if (error) {
+    setErrorText(error.message);
+    return;
+  }
+
+  setMessageText(
+    "If this email is registered, a password reset link has been sent."
+  );
+  setEmail("");
+}
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">

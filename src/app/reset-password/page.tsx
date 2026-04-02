@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,46 +18,60 @@ export default function ResetPasswordPage() {
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
+ useEffect(() => {
+  let mounted = true;
 
-    async function checkSession() {
-      const { data, error } = await supabase.auth.getSession();
+  async function prepareRecoverySession() {
+    setChecking(true);
+    setErrorText("");
+
+    const code = searchParams.get("code");
+
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!mounted) return;
 
       if (error) {
-        setChecking(false);
         setReady(false);
-        setErrorText(error.message);
+        setChecking(false);
+        setErrorText("Invalid or expired reset link.");
         return;
       }
 
-      setReady(!!data.session);
+      setReady(true);
       setChecking(false);
-
-      if (!data.session) {
-        setErrorText("Invalid or expired reset link.");
-      }
+      return;
     }
 
-    checkSession();
+    const { data, error } = await supabase.auth.getSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setReady(!!session);
-        setChecking(false);
-        setErrorText("");
-      }
-    });
+    if (!mounted) return;
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
+    if (error) {
+      setReady(false);
+      setChecking(false);
+      setErrorText(error.message);
+      return;
+    }
+
+    if (data.session) {
+      setReady(true);
+      setChecking(false);
+      return;
+    }
+
+    setReady(false);
+    setChecking(false);
+    setErrorText("Invalid or expired reset link.");
+  }
+
+  prepareRecoverySession();
+
+  return () => {
+    mounted = false;
+  };
+}, [searchParams, supabase]);
 
   async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
