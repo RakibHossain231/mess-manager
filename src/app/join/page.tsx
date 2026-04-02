@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type GroupMode = "managed" | "collaborative";
@@ -14,6 +15,7 @@ export default function JoinPage() {
 
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
 
@@ -23,6 +25,16 @@ export default function JoinPage() {
     }
 
     return "member";
+  }
+
+  async function handleBackToLogin() {
+    setLeaving(true);
+    setErrorText("");
+    setSuccessText("");
+
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
   }
 
   async function handleJoin(e: React.FormEvent<HTMLFormElement>) {
@@ -207,12 +219,22 @@ export default function JoinPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || leaving}
             className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Joining..." : "Join Mess"}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={handleBackToLogin}
+          disabled={loading || leaving}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {leaving ? "Going to login..." : "Back to Login"}
+        </button>
 
         <div className="mt-5 text-center text-sm text-slate-600">
           Want to create your own mess?{" "}
