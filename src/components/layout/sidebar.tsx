@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   CircleDollarSign,
   FileText,
@@ -59,11 +60,36 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
 
+  const [userName, setUserName] = useState("User");
+
   const currentDate = new Date();
   const monthYear = currentDate.toLocaleString("en-US", {
     month: "long",
     year: "numeric",
   });
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function getUser() {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data?.user) return;
+
+      const metadata = data.user.user_metadata ?? {};
+
+      const resolvedName =
+        metadata.name ||
+        metadata.full_name ||
+        metadata.display_name ||
+        data.user.email?.split("@")[0] ||
+        "User";
+
+      setUserName(String(resolvedName));
+    }
+
+    getUser();
+  }, []);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -84,10 +110,12 @@ export default function Sidebar({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-700 text-lg font-bold text-white">
-              M
+              {userName.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Mess Manager</h2>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-bold text-slate-900">
+                {userName}
+              </h2>
               <p className="text-sm text-slate-500">Smart monthly accounting</p>
             </div>
           </div>
@@ -173,7 +201,8 @@ export default function Sidebar({
           </p>
 
           <p className="mt-3 text-xs text-slate-500">
-            Track meals, bazar, reports, and closed month settlements from one place.
+            Track meals, bazar, reports, and closed month settlements from one
+            place.
           </p>
         </div>
       </div>
