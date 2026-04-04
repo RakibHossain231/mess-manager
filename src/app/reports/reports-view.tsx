@@ -549,7 +549,7 @@ export default function ReportsView({
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Final Settlement</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Final balance = Bazar Paid - Meal Cost - Shared Share - Rent
+                  Final balance = Bazar Paid - Meal Cost - Shared Bill - Rent
                 </p>
               </div>
 
@@ -579,8 +579,8 @@ export default function ReportsView({
                     <th className="px-3 py-2 font-medium">Total Meal</th>
                     <th className="px-3 py-2 font-medium">Meal Cost</th>
                     <th className="px-3 py-2 font-medium">Bazar Paid</th>
-                    <th className="px-3 py-2 font-medium">Shared Share</th>
-                    <th className="px-3 py-2 font-medium">Rent</th>
+                    <th className="px-3 py-2 font-medium">Shared Bill</th>
+                    <th className="px-3 py-2 font-medium">House Rent</th>
                     <th className="px-3 py-2 font-medium">Final</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                   </tr>
