@@ -118,7 +118,7 @@ export default async function HomePage() {
 
   const sharedBillLabelMap: Record<string, string> = {
     wifi: "WiFi",
-    utility: "Utility",
+    utility: "Lift Bill",
     electricity: "Electricity",
     gas: "Gas",
     bua: "Bua",
@@ -171,7 +171,7 @@ export default async function HomePage() {
 
     const estimatedMealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const estimatedBalance = bazarPaid - estimatedMealCost - sharedShare;
+    const estimatedBalance = bazarPaid - estimatedMealCost;
 
     return {
       id: memberItem.id,
@@ -257,7 +257,7 @@ export default async function HomePage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <SectionTitle
             title="Member Live Summary"
-            subtitle="Current month meal, bazar, and shared bill summary for each member"
+            subtitle="Current month meal and bazar summary for each member"
           />
 
           <div className="overflow-x-auto">
@@ -272,9 +272,9 @@ export default async function HomePage() {
 
                   {isPrivileged && (
                     <>
-                      <th className="px-4 py-2">Shared Cost</th>
                       <th className="px-4 py-2">Meal Cost</th>
                       <th className="px-4 py-2"> Estimated Balance </th>
+                      <th className="px-3 py-2">Status</th>
                     </>
                   )}
                 </tr>
@@ -299,14 +299,11 @@ export default async function HomePage() {
                     {isPrivileged && (
                       <>
                         <td className="px-4 py-4">
-                          ৳ {item.sharedShare.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-4">
                           ৳ {item.estimatedMealCost.toFixed(2)}
                         </td>
                         <td
                           className={cn(
-                            "rounded-r-2xl px-4 py-4 font-semibold",
+                            "px-4 py-4 font-semibold",
                             item.estimatedBalance < 0
                               ? "text-red-500"
                               : item.estimatedBalance > 0
@@ -315,6 +312,17 @@ export default async function HomePage() {
                           )}
                         >
                           ৳ {item.estimatedBalance.toFixed(2)}
+                        </td>
+                          <td className="px-4 py-4">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              item.estimatedBalance >= 0
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {item.estimatedBalance >= 0 ? "Will Receive" : "Will Pay"}
+                          </span>
                         </td>
                       </>
                     )}
