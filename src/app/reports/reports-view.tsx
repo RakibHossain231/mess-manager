@@ -46,6 +46,8 @@ const sharedStatusCategories = [
   { key: "electricity", label: "Current Bill" },
   { key: "gas", label: "Gas Bill" },
   { key: "bua", label: "Bua Bill" },
+  { key: "moyla", label: "Moyla Bill" },
+  { key: "pani", label: "Pani Bill" },
 ] as const;
 
 export default function ReportsView({
