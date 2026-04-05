@@ -121,3 +121,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_YBVkhQR3Ser8nCk3p6qAFw_P5hvF73U
 ```bash
 npm run dev
 ```
+
+## 👨‍💻 Author
+
+### Rakib Hossain
+GitHub: [Click](https://github.com/RakibHossain231)
+LinkedIn: [Click](https://www.linkedin.com/in/rakibhossain231/)
