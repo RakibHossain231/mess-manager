@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,7 +20,7 @@ type MealEntry = {
 type ExpenseEntry = {
   category: string;
   amount: number;
-  paid_by_member_id: string;
+  paid_by_member_id: string | null;
 };
 
 type ChargeRow = {
@@ -71,6 +71,32 @@ export default function ClosedMonthSettlementView({
 
   const canEdit = viewerRole === "admin" || viewerRole === "manager";
 
+  const chargeMap = useMemo(() => {
+    return new Map(
+      charges.map((item) => [item.member_id, Number(item.rent_amount || 0)])
+    );
+  }, [charges]);
+
+  const settlementMap = useMemo(() => {
+    return new Map(
+      settlements.map((item) => [
+        item.member_id,
+        {
+          finalAmount: Number(item.final_amount || 0),
+          finalType: item.final_type,
+          paidAmount: Number(item.paid_amount || 0),
+        },
+      ])
+    );
+  }, [settlements]);
+
+  // Important:
+  // Even if page accidentally sends extra members, view will only show members
+  // who have rent charge in this selected closed month.
+  const monthMembers = useMemo(() => {
+    return members.filter((member) => chargeMap.has(member.id));
+  }, [members, chargeMap]);
+
   const totalMeals = meals.reduce(
     (sum, item) => sum + Number(item.own_meal || 0) + Number(item.guest_meal || 0),
     0
@@ -85,26 +111,12 @@ export default function ClosedMonthSettlementView({
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
+
   const perMemberSharedCost =
-    members.length > 0 ? totalSharedBills / members.length : 0;
-
-  const chargeMap = new Map(
-    charges.map((item) => [item.member_id, Number(item.rent_amount || 0)])
-  );
-
-  const settlementMap = new Map(
-    settlements.map((item) => [
-      item.member_id,
-      {
-        finalAmount: Number(item.final_amount || 0),
-        finalType: item.final_type,
-        paidAmount: Number(item.paid_amount || 0),
-      },
-    ])
-  );
+    monthMembers.length > 0 ? totalSharedBills / monthMembers.length : 0;
 
   const rows = useMemo(() => {
-    return members.map((member) => {
+    return monthMembers.map((member) => {
       const memberMeals = meals.filter((item) => item.member_id === member.id);
 
       const ownMeal = memberMeals.reduce(
@@ -125,9 +137,7 @@ export default function ClosedMonthSettlementView({
         )
         .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-      const chargeRent = Number(chargeMap.get(member.id) ?? 0);
-      const fallbackRent = Number(member.monthly_rent ?? 0);
-      const rent = chargeRent > 0 ? chargeRent : fallbackRent;
+      const rent = Number(chargeMap.get(member.id) ?? 0);
 
       const mealCost = totalMeal * mealRate;
       const sharedShare = perMemberSharedCost;
@@ -135,6 +145,7 @@ export default function ClosedMonthSettlementView({
 
       const computedFinalType: "pay" | "receive" =
         rawFinalBalance >= 0 ? "receive" : "pay";
+
       const computedFinalAmount = Math.abs(rawFinalBalance);
 
       const savedSettlement = settlementMap.get(member.id);
@@ -171,12 +182,22 @@ export default function ClosedMonthSettlementView({
         statusLabel,
       };
     });
-  }, [members, meals, expenses, chargeMap, mealRate, perMemberSharedCost, settlementMap]);
+  }, [
+    monthMembers,
+    meals,
+    expenses,
+    chargeMap,
+    mealRate,
+    perMemberSharedCost,
+    settlementMap,
+  ]);
 
-  // input field = new payment entry, not total paid amount
-  const [entryValues, setEntryValues] = useState<Record<string, string>>(
-    Object.fromEntries(rows.map((row) => [row.id, "0.00"]))
-  );
+  const [entryValues, setEntryValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setEntryValues(Object.fromEntries(rows.map((row) => [row.id, "0.00"])));
+  }, [selectedMonthId, rows]);
+
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const totalWillPay = rows
@@ -187,13 +208,9 @@ export default function ClosedMonthSettlementView({
     .filter((row) => row.finalType === "receive")
     .reduce((sum, row) => sum + row.finalAmount, 0);
 
-  const totalPaidAmount = rows.reduce((sum, row) => {
-    return sum + row.paidAmount;
-  }, 0);
+  const totalPaidAmount = rows.reduce((sum, row) => sum + row.paidAmount, 0);
 
-  const totalRemaining = rows.reduce((sum, row) => {
-    return sum + row.remaining;
-  }, 0);
+  const totalRemaining = rows.reduce((sum, row) => sum + row.remaining, 0);
 
   const handleMonthChange = (monthId: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -238,7 +255,6 @@ export default function ClosedMonthSettlementView({
       return;
     }
 
-    // reset entry field after save
     setEntryValues((prev) => ({
       ...prev,
       [row.id]: "0.00",
@@ -252,7 +268,9 @@ export default function ClosedMonthSettlementView({
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Closed Month Settlement</h1>
+            <h1 className="text-3xl font-bold text-slate-900">
+              Closed Month Settlement
+            </h1>
             <p className="mt-2 text-slate-600">
               <b>{monthLabel}</b>
             </p>
@@ -287,7 +305,7 @@ export default function ClosedMonthSettlementView({
             ৳ {(totalWillPay + totalWillReceive).toFixed(2)}
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Total due= Paid amount + remaining
+            Total due = paid amount + remaining
           </p>
         </div>
 
@@ -304,7 +322,7 @@ export default function ClosedMonthSettlementView({
             ৳ {totalRemaining.toFixed(2)}
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Remaining= Total will pay + total will received
+            Remaining = total will pay + total will receive
           </p>
         </div>
       </div>
@@ -337,11 +355,13 @@ export default function ClosedMonthSettlementView({
                 const safeEntry = Math.max(rawEntry, 0);
                 const previewEntry = Math.min(safeEntry, row.remaining);
 
-                // preview only
-                const previewPaid = Math.min(row.paidAmount + previewEntry, row.finalAmount);
+                const previewPaid = Math.min(
+                  row.paidAmount + previewEntry,
+                  row.finalAmount
+                );
+
                 const previewRemaining = Math.max(row.finalAmount - previewPaid, 0);
 
-                // persisted status only
                 const savedIsDone = row.statusLabel === "Done";
 
                 return (
@@ -412,7 +432,11 @@ export default function ClosedMonthSettlementView({
                     </td>
 
                     <td className="px-3 py-4">
-                      ৳ {(canEdit && !savedIsDone ? previewRemaining : row.remaining).toFixed(2)}
+                      ৳{" "}
+                      {(canEdit && !savedIsDone
+                        ? previewRemaining
+                        : row.remaining
+                      ).toFixed(2)}
                     </td>
 
                     <td className="px-3 py-4">

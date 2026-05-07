@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import ReportsView from "@/app/reports/reports-view";
 import { getUserGroupContext } from "@/lib/group-access";
-
+import { snapshotToLiveReportProps } from "@/lib/report-snapshot";
 type Member = {
   id: string;
   name: string;
@@ -20,7 +20,7 @@ type MealEntry = {
 type ExpenseEntry = {
   category: string;
   amount: number;
-  paid_by_member_id: string;
+  paid_by_member_id: string | null;
 };
 
 type ChargeRow = {
@@ -91,27 +91,10 @@ export default async function ReportsPage({
     openMonth ??
     months[0];
 
-  const { data: membersData } = await supabase
-    .from("members")
-    .select("id, name, role, monthly_rent")
-    .eq("group_id", group.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
-
-  const { data: mealsData } = await supabase
-    .from("meal_entries")
-    .select("member_id, own_meal, guest_meal")
-    .eq("month_id", selectedMonth.id);
-
-  const { data: expensesData } = await supabase
-    .from("expense_entries")
-    .select("category, amount, paid_by_member_id")
-    .eq("month_id", selectedMonth.id);
-
-  const { data: chargesData } = await supabase
-    .from("member_monthly_charges")
-    .select("member_id, rent_amount")
-    .eq("month_id", selectedMonth.id);
+  let members: Member[] = [];
+  let meals: MealEntry[] = [];
+  let expenses: ExpenseEntry[] = [];
+  let charges: ChargeRow[] = [];
 
   const { data: settlementsData } = await supabase
     .from("month_settlements")
@@ -119,11 +102,52 @@ export default async function ReportsPage({
     .eq("group_id", group.id)
     .eq("month_id", selectedMonth.id);
 
-  const members: Member[] = (membersData ?? []) as Member[];
-  const meals: MealEntry[] = (mealsData ?? []) as MealEntry[];
-  const expenses: ExpenseEntry[] = (expensesData ?? []) as ExpenseEntry[];
-  const charges: ChargeRow[] = (chargesData ?? []) as ChargeRow[];
   const settlements: SettlementRow[] = (settlementsData ?? []) as SettlementRow[];
+
+  if (selectedMonth.status === "closed") {
+    const { data: snapshotData } = await supabase
+      .from("closed_month_reports")
+      .select("report_data")
+      .eq("group_id", group.id)
+      .eq("month_id", selectedMonth.id)
+      .maybeSingle();
+
+    if (snapshotData?.report_data) {
+      const snapshotProps = snapshotToLiveReportProps(snapshotData.report_data);
+
+      members = snapshotProps.members as Member[];
+      meals = snapshotProps.meals;
+      expenses = snapshotProps.expenses;
+      charges = snapshotProps.charges;
+    }
+  } else {
+    const { data: membersData } = await supabase
+      .from("members")
+      .select("id, name, role, monthly_rent")
+      .eq("group_id", group.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    const { data: mealsData } = await supabase
+      .from("meal_entries")
+      .select("member_id, own_meal, guest_meal")
+      .eq("month_id", selectedMonth.id);
+
+    const { data: expensesData } = await supabase
+      .from("expense_entries")
+      .select("category, amount, paid_by_member_id")
+      .eq("month_id", selectedMonth.id);
+
+    const { data: chargesData } = await supabase
+      .from("member_monthly_charges")
+      .select("member_id, rent_amount")
+      .eq("month_id", selectedMonth.id);
+
+    members = (membersData ?? []) as Member[];
+    meals = (mealsData ?? []) as MealEntry[];
+    expenses = (expensesData ?? []) as ExpenseEntry[];
+    charges = (chargesData ?? []) as ChargeRow[];
+  }
 
   return (
     <AppShell>

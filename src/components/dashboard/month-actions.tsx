@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { buildClosedMonthReportData } from "@/lib/report-snapshot";
 
 type Member = {
   id: string;
+  name: string;
+  role?: "admin" | "manager" | "member";
   monthly_rent: number;
 };
 
@@ -83,6 +86,62 @@ export default function MonthActions({
     if (existingNextMonth) {
       setLoading(false);
       setMsg(`Next month (${nextMonthInfo.label}) already exists.`);
+      return;
+    }
+
+    const { data: mealsData, error: mealsError } = await supabase
+      .from("meal_entries")
+      .select("member_id, own_meal, guest_meal")
+      .eq("month_id", currentMonthId);
+
+    if (mealsError) {
+      setLoading(false);
+      setMsg(mealsError.message);
+      return;
+    }
+
+    const { data: expensesData, error: expensesError } = await supabase
+      .from("expense_entries")
+      .select("category, amount, paid_by_member_id")
+      .eq("month_id", currentMonthId);
+
+    if (expensesError) {
+      setLoading(false);
+      setMsg(expensesError.message);
+      return;
+    }
+
+    const { data: chargesData, error: chargesFetchError } = await supabase
+      .from("member_monthly_charges")
+      .select("member_id, rent_amount")
+      .eq("month_id", currentMonthId);
+
+    if (chargesFetchError) {
+      setLoading(false);
+      setMsg(chargesFetchError.message);
+      return;
+    }
+
+    const reportData = buildClosedMonthReportData({
+      members,
+      meals: mealsData ?? [],
+      expenses: expensesData ?? [],
+      charges: chargesData ?? [],
+    });
+
+    const { error: snapshotError } = await supabase.from("closed_month_reports").upsert(
+      {
+        group_id: groupId,
+        month_id: currentMonthId,
+        month_label: currentMonthLabel,
+        report_data: reportData,
+      },
+      { onConflict: "group_id,month_id" }
+    );
+
+    if (snapshotError) {
+      setLoading(false);
+      setMsg(snapshotError.message);
       return;
     }
 
@@ -174,10 +233,8 @@ export default function MonthActions({
 
           <div className="mt-3 space-y-3 text-sm text-slate-700">
             <p>
-              This will close the current month and create the next month automatically.
-            </p>
-            <p>
-              Your current month data will stay saved in the database and can be viewed later.
+              This will close the current month, save a frozen report snapshot, and
+              create the next month automatically.
             </p>
 
             <label className="flex items-start gap-3">
