@@ -1,43 +1,75 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type {
+  Member,
+  MemberDefaultCharge,
+  MemberMonthlyCharge,
+  Role,
+} from "@/types";
 
-type Member = {
-  id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
-  mobile_number: string;
-  nid_number: string | null;
-  is_active: boolean;
+const CHARGE_KEYS = [
+  "rent",
+  "wifi",
+  "electricity",
+  "water",
+  "gas",
+  "khala_bill",
+  "utility",
+  "others",
+] as const;
+
+type ChargeKey = (typeof CHARGE_KEYS)[number];
+
+type MemberProps = {
+  groupId: string;
+  members: Member[];
+  monthId: string | null;
+  defaultCharges: Map<string, MemberDefaultCharge>;
+  monthlyCharges: MemberMonthlyCharge[];
+  currentUserRole: Role;
+  currentUserMemberId: string;
 };
 
-type ChargeRow = {
-  id: string;
-  member_id: string;
-  rent_amount: number;
+const EMPTY_CHARGES: Record<ChargeKey, number> = {
+  rent: 0,
+  wifi: 0,
+  electricity: 0,
+  water: 0,
+  gas: 0,
+  khala_bill: 0,
+  utility: 0,
+  others: 0,
 };
+
+// Extract ONLY the 8 charge fields (as numbers) from any source row.
+// Prevents DB columns like id / member_id / created_at from leaking into
+// the update/upsert payload when a member already has a charge row.
+function pickCharges(
+  source: Partial<Record<ChargeKey, number>> | null | undefined
+): Record<ChargeKey, number> {
+  const result = { ...EMPTY_CHARGES };
+  if (!source) return result;
+  for (const key of CHARGE_KEYS) {
+    result[key] = Number(source[key] ?? 0);
+  }
+  return result;
+}
 
 export default function MembersManager({
   groupId,
   members,
   monthId,
-  charges,
+  defaultCharges,
+  monthlyCharges,
   currentUserRole,
-}: {
-  groupId: string;
-  members: Member[];
-  monthId: string | null;
-  charges: ChargeRow[];
-  currentUserRole: "admin" | "manager" | "member";
-  currentUserMemberId: string;
-}) {
+}: MemberProps) {
   const router = useRouter();
   const supabase = createClient();
 
-  const isAdmin = currentUserRole === "admin";
+  const isAdmin = currentUserRole === "admin" || currentUserRole === "owner";
 
   const currentDate = new Date();
   const monthYear = currentDate.toLocaleString("en-US", {
@@ -45,9 +77,9 @@ export default function MembersManager({
     year: "numeric",
   });
 
-  const chargeMap = useMemo(() => {
-    return new Map(charges.map((item) => [item.member_id, item]));
-  }, [charges]);
+  const monthChargeMap = useMemo(() => {
+    return new Map(monthlyCharges.map((item) => [item.member_id, item]));
+  }, [monthlyCharges]);
 
   const [msg, setMsg] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -55,10 +87,8 @@ export default function MembersManager({
   const [newName, setNewName] = useState("");
   const [newMobile, setNewMobile] = useState("");
   const [newNid, setNewNid] = useState("");
-  const [newRole, setNewRole] = useState<"admin" | "manager" | "member">(
-    "member"
-  );
-  const [newRent, setNewRent] = useState("0");
+  const [newRole, setNewRole] = useState<Role>("member");
+  const [newCharges, setNewCharges] = useState({ ...EMPTY_CHARGES });
   const [addLoading, setAddLoading] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,22 +96,22 @@ export default function MembersManager({
     name: "",
     mobile: "",
     nid: "",
-    role: "member" as "admin" | "manager" | "member",
-    defaultRent: "0",
-    monthRent: "0",
+    role: "member" as Role,
+    charges: { ...EMPTY_CHARGES },
   });
 
   function startEdit(member: Member) {
-    const charge = chargeMap.get(member.id);
+    const monthCharge = monthChargeMap.get(member.id);
+    const defaultCharge = defaultCharges.get(member.id);
 
     setEditingId(member.id);
     setEditData({
-      name: member.name,
-      mobile: member.mobile_number,
-      nid: member.nid_number || "",
+      name: member.full_name,
+      mobile: member.phone,
+      nid: member.nid || "",
       role: member.role,
-      defaultRent: String(Number(member.monthly_rent ?? 0)),
-      monthRent: String(Number(charge?.rent_amount ?? member.monthly_rent ?? 0)),
+      // Prefer this month's snapshot; fall back to the member's defaults.
+      charges: pickCharges(monthCharge ?? defaultCharge),
     });
     setMsg("");
   }
@@ -93,8 +123,7 @@ export default function MembersManager({
       mobile: "",
       nid: "",
       role: "member",
-      defaultRent: "0",
-      monthRent: "0",
+      charges: { ...EMPTY_CHARGES },
     });
   }
 
@@ -109,8 +138,6 @@ export default function MembersManager({
     const cleanName = editData.name.trim();
     const cleanMobile = editData.mobile.trim();
     const cleanNid = editData.nid.trim();
-    const defaultRent = Number(editData.defaultRent || 0);
-    const monthRent = Number(editData.monthRent || 0);
 
     if (!cleanName) {
       setMsg("Member name is required.");
@@ -122,9 +149,11 @@ export default function MembersManager({
       return;
     }
 
-    if (defaultRent < 0 || monthRent < 0) {
-      setMsg("Rent cannot be negative.");
-      return;
+    for (const key of CHARGE_KEYS) {
+      if (editData.charges[key] < 0) {
+        setMsg("Charges cannot be negative.");
+        return;
+      }
     }
 
     if (memberRole === "admin" && editData.role !== "admin") {
@@ -137,7 +166,9 @@ export default function MembersManager({
     }
 
     const duplicate = members.find(
-      (item) => item.id !== memberId && item.mobile_number.trim() === cleanMobile
+      (item) =>
+        item.id !== memberId &&
+        item.phone.trim().toLowerCase() === cleanMobile.trim().toLowerCase()
     );
 
     if (duplicate) {
@@ -147,40 +178,62 @@ export default function MembersManager({
 
     setLoadingId(memberId);
 
-    const { error } = await supabase
+    const { error: memberError } = await supabase
       .from("members")
       .update({
-        name: cleanName,
-        mobile_number: cleanMobile,
-        nid_number: cleanNid || null,
+        full_name: cleanName,
+        phone: cleanMobile,
+        nid: cleanNid || null,
         role: editData.role,
-        monthly_rent: defaultRent,
       })
       .eq("id", memberId);
 
-    if (error) {
+    if (memberError) {
       setLoadingId(null);
-      setMsg(error.message);
+      setMsg(memberError.message);
       return;
     }
 
-    if (monthId) {
-      const { error: chargeError } = await supabase
-        .from("member_monthly_charges")
-        .upsert(
-          {
-            month_id: monthId,
-            member_id: memberId,
-            rent_amount: monthRent,
-          },
-          {
-            onConflict: "month_id,member_id",
-          }
-        );
+    // Upsert default charges (the member's ongoing template)
+    const defaultCharge = defaultCharges.get(memberId);
+    if (defaultCharge) {
+      const { error } = await supabase
+        .from("member_default_charges")
+        .update({ ...editData.charges })
+        .eq("id", defaultCharge.id);
 
-      if (chargeError) {
+      if (error) {
         setLoadingId(null);
-        setMsg(chargeError.message);
+        setMsg(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("member_default_charges").insert({
+        member_id: memberId,
+        ...editData.charges,
+      });
+
+      if (error) {
+        setLoadingId(null);
+        setMsg(error.message);
+        return;
+      }
+    }
+
+    // Upsert monthly snapshot (only when a month is open)
+    if (monthId) {
+      const { error } = await supabase.from("member_monthly_charges").upsert(
+        {
+          month_id: monthId,
+          member_id: memberId,
+          ...editData.charges,
+        },
+        { onConflict: "month_id,member_id" }
+      );
+
+      if (error) {
+        setLoadingId(null);
+        setMsg(error.message);
         return;
       }
     }
@@ -209,13 +262,16 @@ export default function MembersManager({
       return;
     }
 
-    if (Number(newRent || 0) < 0) {
-      setMsg("House rent cannot be negative.");
-      return;
+    for (const key of CHARGE_KEYS) {
+      if (newCharges[key] < 0) {
+        setMsg("Charges cannot be negative.");
+        return;
+      }
     }
 
     const duplicate = members.find(
-      (member) => member.mobile_number.trim() === newMobile.trim()
+      (member) =>
+        member.phone.trim().toLowerCase() === newMobile.trim().toLowerCase()
     );
 
     if (duplicate) {
@@ -229,12 +285,12 @@ export default function MembersManager({
       .from("members")
       .insert({
         group_id: groupId,
-        name: newName.trim(),
-        mobile_number: newMobile.trim(),
-        nid_number: newNid.trim() || null,
+        full_name: newName.trim(),
+        phone: newMobile.trim(),
+        nid: newNid.trim() || null,
         role: newRole,
-        monthly_rent: Number(newRent || 0),
-        is_active: true,
+        status: "active",
+        joined_at: new Date().toISOString().split("T")[0],
       })
       .select("id")
       .single();
@@ -245,16 +301,29 @@ export default function MembersManager({
       return;
     }
 
+    // Create default charges for the new member
+    const { error: defaultError } = await supabase
+      .from("member_default_charges")
+      .insert({
+        member_id: memberData.id,
+        ...newCharges,
+      });
+
+    if (defaultError) {
+      setAddLoading(false);
+      setMsg(defaultError.message);
+      return;
+    }
+
+    // Snapshot for the open month
     if (monthId) {
       await supabase.from("member_monthly_charges").upsert(
         {
           month_id: monthId,
           member_id: memberData.id,
-          rent_amount: Number(newRent || 0),
+          ...newCharges,
         },
-        {
-          onConflict: "month_id,member_id",
-        }
+        { onConflict: "month_id,member_id" }
       );
     }
 
@@ -263,12 +332,12 @@ export default function MembersManager({
     setNewMobile("");
     setNewNid("");
     setNewRole("member");
-    setNewRent("0");
+    setNewCharges({ ...EMPTY_CHARGES });
     setMsg("Member added successfully.");
     router.refresh();
   }
 
-  async function handleDeactivate(
+  async function handleToggleActive(
     memberId: string,
     active: boolean,
     memberRole: Member["role"]
@@ -282,7 +351,7 @@ export default function MembersManager({
 
     if (active && memberRole === "admin") {
       const activeAdminCount = members.filter(
-        (item) => item.role === "admin" && item.is_active
+        (item) => item.role === "admin" && item.status === "active"
       ).length;
 
       if (activeAdminCount <= 1) {
@@ -292,8 +361,8 @@ export default function MembersManager({
     }
 
     const text = active
-      ? "Deactivate this member? Old data will remain."
-      : "Activate this member again?";
+      ? "Mark this member as left? Old data will remain."
+      : "Activate this member?";
 
     const ok = window.confirm(text);
     if (!ok) return;
@@ -301,7 +370,8 @@ export default function MembersManager({
     const { error } = await supabase
       .from("members")
       .update({
-        is_active: !active,
+        status: active ? "left" : "active",
+        left_at: active ? new Date().toISOString().split("T")[0] : null,
       })
       .eq("id", memberId);
 
@@ -310,9 +380,47 @@ export default function MembersManager({
       return;
     }
 
-    setMsg(active ? "Member deactivated." : "Member activated.");
+    setMsg(active ? "Member marked as left." : "Member activated.");
     router.refresh();
   }
+
+  const chargeLabels: Record<ChargeKey, string> = {
+    rent: "Rent",
+    wifi: "Wifi",
+    electricity: "Electricity",
+    water: "Water",
+    gas: "Gas",
+    khala_bill: "Khala Bill",
+    utility: "Utility",
+    others: "Others",
+  };
+
+  const renderChargeInput = (
+    key: ChargeKey,
+    current: Record<ChargeKey, number>,
+    onChange: (next: Record<ChargeKey, number>) => void
+  ) => {
+    return (
+      <div key={key}>
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          {chargeLabels[key]}
+        </label>
+        <input
+          type="number"
+          min="0"
+          value={current[key]}
+          onChange={(e) =>
+            onChange({ ...current, [key]: Number(e.target.value || 0) })
+          }
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
+        />
+      </div>
+    );
+  };
+
+  const defaultChargeFields = CHARGE_KEYS.map((key) =>
+    renderChargeInput(key, newCharges, (next) => setNewCharges(next))
+  );
 
   return (
     <div className="space-y-6">
@@ -328,7 +436,7 @@ export default function MembersManager({
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900">Add New Member</h2>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-5">
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Name
@@ -374,9 +482,7 @@ export default function MembersManager({
               </label>
               <select
                 value={newRole}
-                onChange={(e) =>
-                  setNewRole(e.target.value as "admin" | "manager" | "member")
-                }
+                onChange={(e) => setNewRole(e.target.value as Role)}
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-teal-600"
               >
                 <option value="admin">Admin</option>
@@ -384,19 +490,14 @@ export default function MembersManager({
                 <option value="member">Member</option>
               </select>
             </div>
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                House Rent
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={newRent}
-                onChange={(e) => setNewRent(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
-              />
-            </div>
+          {/* Default monthly charges */}
+          <div className="mt-5">
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">
+              Default Monthly Charges
+            </h3>
+            <div className="grid gap-4 md:grid-cols-4">{defaultChargeFields}</div>
           </div>
 
           <div className="mt-5">
@@ -420,14 +521,20 @@ export default function MembersManager({
         </div>
 
         <div className="mt-5 overflow-x-auto">
-          <table className="min-w-[980px] border-separate border-spacing-y-3">
+          <table className="min-w-[1500px] border-separate border-spacing-y-3">
             <thead>
               <tr className="text-left text-sm text-slate-500">
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Mobile</th>
+                <th className="px-3 py-2">Gmail</th>
                 <th className="px-3 py-2">NID</th>
                 <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">House Rent</th>
+                {CHARGE_KEYS.map((key) => (
+                  <th key={key} className="px-3 py-2 text-right whitespace-nowrap">
+                    {chargeLabels[key]}
+                  </th>
+                ))}
+                <th className="px-3 py-2 text-right">Total</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Action</th>
               </tr>
@@ -435,11 +542,23 @@ export default function MembersManager({
 
             <tbody>
               {members.map((member) => {
-                const currentMonthRent =
-                  chargeMap.get(member.id)?.rent_amount ?? member.monthly_rent ?? 0;
+                const defaultCharge = defaultCharges.get(member.id);
+                const monthCharge = monthChargeMap.get(member.id);
+                const isEditingRow = editingId === member.id;
+
+                // While editing, mirror the live panel values; otherwise show
+                // this month's snapshot, falling back to the member's defaults.
+                const displayCharges = isEditingRow
+                  ? editData.charges
+                  : pickCharges(monthCharge ?? defaultCharge);
+                const rowTotal = CHARGE_KEYS.reduce(
+                  (sum, key) => sum + Number(displayCharges[key] ?? 0),
+                  0
+                );
 
                 return (
-                  <tr key={member.id} className="bg-slate-50 text-sm">
+                  <Fragment key={member.id}>
+                    <tr className="bg-slate-50 text-sm">
                     <td className="px-3 py-3">
                       {editingId === member.id ? (
                         <input
@@ -454,7 +573,7 @@ export default function MembersManager({
                         />
                       ) : (
                         <span className="font-semibold text-slate-900">
-                          {member.name}
+                          {member.full_name}
                         </span>
                       )}
                     </td>
@@ -472,8 +591,12 @@ export default function MembersManager({
                           className="w-full rounded-xl border border-slate-300 px-3 py-2"
                         />
                       ) : (
-                        member.mobile_number
+                        member.phone
                       )}
+                    </td>
+
+                    <td className="px-3 py-3 font-medium text-slate-600">
+                      {member.email || "-"}
                     </td>
 
                     <td className="px-3 py-3">
@@ -489,7 +612,7 @@ export default function MembersManager({
                           className="w-full rounded-xl border border-slate-300 px-3 py-2"
                         />
                       ) : (
-                        member.nid_number || "-"
+                        member.nid || "-"
                       )}
                     </td>
 
@@ -500,10 +623,7 @@ export default function MembersManager({
                           onChange={(e) =>
                             setEditData((prev) => ({
                               ...prev,
-                              role: e.target.value as
-                                | "admin"
-                                | "manager"
-                                | "member",
+                              role: e.target.value as Role,
                             }))
                           }
                           className="rounded-xl border border-slate-300 bg-white px-3 py-2"
@@ -517,34 +637,36 @@ export default function MembersManager({
                       )}
                     </td>
 
-                    <td className="px-3 py-3">
-                      {editingId === member.id ? (
-                        <input
-                          type="number"
-                          min="0"
-                          value={editData.defaultRent}
-                          onChange={(e) =>
-                            setEditData((prev) => ({
-                              ...prev,
-                              defaultRent: e.target.value,
-                            }))
-                          }
-                          className="w-28 rounded-xl border border-slate-300 px-3 py-2"
-                        />
-                      ) : (
-                        `৳ ${Number(member.monthly_rent).toFixed(0)}`
-                      )}
+                    {CHARGE_KEYS.map((key) => (
+                      <td
+                        key={key}
+                        className="px-3 py-3 text-right whitespace-nowrap"
+                      >
+                        {isEditingRow ? (
+                          <span className="font-medium text-teal-700">
+                            ৳ {Number(displayCharges[key]).toFixed(0)}
+                          </span>
+                        ) : (
+                          `৳ ${Number(displayCharges[key]).toFixed(0)}`
+                        )}
+                      </td>
+                    ))}
+
+                    <td className="px-3 py-3 text-right whitespace-nowrap font-semibold text-slate-900">
+                      ৳ {rowTotal.toFixed(0)}
                     </td>
 
                     <td className="px-3 py-3">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          member.is_active
+                          member.status === "active"
                             ? "bg-green-100 text-green-700"
-                            : "bg-slate-200 text-slate-700"
+                            : member.status === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-200 text-slate-700"
                         }`}
                       >
-                        {member.is_active ? "Active" : "Inactive"}
+                        {member.status}
                       </span>
                     </td>
 
@@ -579,19 +701,19 @@ export default function MembersManager({
 
                               <button
                                 onClick={() =>
-                                  handleDeactivate(
+                                  handleToggleActive(
                                     member.id,
-                                    member.is_active,
+                                    member.status === "active",
                                     member.role
                                   )
                                 }
                                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
-                                  member.is_active
+                                  member.status === "active"
                                     ? "border border-red-200 bg-red-50 text-red-600"
                                     : "border border-green-200 bg-green-50 text-green-700"
                                 }`}
                               >
-                                {member.is_active ? "Deactivate" : "Activate"}
+                                {member.status === "active" ? "Mark Left" : "Activate"}
                               </button>
                             </>
                           )}
@@ -600,7 +722,37 @@ export default function MembersManager({
                         <span className="text-xs text-slate-500">View only</span>
                       )}
                     </td>
-                  </tr>
+                    </tr>
+
+                    {editingId === member.id ? (
+                      <tr className="bg-slate-50">
+                        <td colSpan={16} className="px-3 pb-4">
+                          <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4">
+                            <h4 className="mb-3 text-sm font-semibold text-slate-700">
+                              Monthly Charges — {member.full_name}
+                            </h4>
+                            <div className="grid gap-4 md:grid-cols-4">
+                              {CHARGE_KEYS.map((key) =>
+                                renderChargeInput(
+                                  key,
+                                  editData.charges,
+                                  (next) =>
+                                    setEditData((prev) => ({
+                                      ...prev,
+                                      charges: next,
+                                    }))
+                                )
+                              )}
+                            </div>
+                            <p className="mt-3 text-xs text-slate-500">
+                              These values are saved to the member&apos;s
+                              defaults and to the current open month.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>

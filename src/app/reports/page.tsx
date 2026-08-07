@@ -3,12 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import ReportsView from "@/app/reports/reports-view";
 import { getUserGroupContext } from "@/lib/group-access";
-import { snapshotToLiveReportProps } from "@/lib/report-snapshot";
+import { settlementsToReportProps } from "@/lib/report-snapshot";
+
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
+  full_name: string;
 };
 
 type MealEntry = {
@@ -18,14 +17,24 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
-  category: string;
+  expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
 };
 
 type ChargeRow = {
   member_id: string;
-  rent_amount: number;
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+  advance: number;
+  discount: number;
+  previous_due: number;
 };
 
 type MonthRow = {
@@ -95,37 +104,41 @@ export default async function ReportsPage({
   let meals: MealEntry[] = [];
   let expenses: ExpenseEntry[] = [];
   let charges: ChargeRow[] = [];
-
-  const { data: settlementsData } = await supabase
-    .from("month_settlements")
-    .select("member_id, final_amount, final_type, paid_amount")
-    .eq("group_id", group.id)
-    .eq("month_id", selectedMonth.id);
-
-  const settlements: SettlementRow[] = (settlementsData ?? []) as SettlementRow[];
+  let settlements: SettlementRow[] = [];
 
   if (selectedMonth.status === "closed") {
-    const { data: snapshotData } = await supabase
-      .from("closed_month_reports")
-      .select("report_data")
+    // Closed months are frozen: read the per-member settlement rows saved at
+    // close time and reconstruct the report shape from them.
+    const { data: settlementsData } = await supabase
+      .from("settlements")
+      .select(
+        "member_id, total_own_meal, total_guest_meal, meal_rate, bazar_paid, shared_expense, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due, final_amount, paid_amount"
+      )
       .eq("group_id", group.id)
-      .eq("month_id", selectedMonth.id)
-      .maybeSingle();
+      .eq("month_id", selectedMonth.id);
 
-    if (snapshotData?.report_data) {
-      const snapshotProps = snapshotToLiveReportProps(snapshotData.report_data);
+    const { data: membersData } = await supabase
+      .from("members")
+      .select("id, full_name")
+      .eq("group_id", group.id);
 
-      members = snapshotProps.members as Member[];
-      meals = snapshotProps.meals;
-      expenses = snapshotProps.expenses;
-      charges = snapshotProps.charges;
-    }
+    const nameMap = Object.fromEntries(
+      (membersData ?? []).map((item) => [item.id, item.full_name])
+    );
+
+    const props = settlementsToReportProps(settlementsData ?? [], nameMap);
+
+    members = props.members;
+    meals = props.meals;
+    expenses = props.expenses;
+    charges = props.charges;
+    settlements = props.settlementRows;
   } else {
     const { data: membersData } = await supabase
       .from("members")
-      .select("id, name, role, monthly_rent")
+      .select("id, full_name")
       .eq("group_id", group.id)
-      .eq("is_active", true)
+      .eq("status", "active")
       .order("created_at", { ascending: true });
 
     const { data: mealsData } = await supabase
@@ -135,12 +148,14 @@ export default async function ReportsPage({
 
     const { data: expensesData } = await supabase
       .from("expense_entries")
-      .select("category, amount, paid_by_member_id")
+      .select("expense_type, amount, paid_by_member_id")
       .eq("month_id", selectedMonth.id);
 
     const { data: chargesData } = await supabase
       .from("member_monthly_charges")
-      .select("member_id, rent_amount")
+      .select(
+        "member_id, rent, wifi, electricity, water, gas, khala_bill, utility, others, advance, discount, previous_due"
+      )
       .eq("month_id", selectedMonth.id);
 
     members = (membersData ?? []) as Member[];
@@ -164,7 +179,7 @@ export default async function ReportsPage({
         settlements={settlements}
         viewerRole={member.role}
         viewerMemberId={member.id}
-        canExport={member.role === "admin"}
+        canExport={member.role === "owner" || member.role === "admin"}
       />
     </AppShell>
   );

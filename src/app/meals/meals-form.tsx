@@ -6,23 +6,24 @@ import { createClient } from "@/lib/supabase/client";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
+  full_name: string;
+  role: "owner" | "admin" | "manager" | "member";
 };
 
 type MealRow = {
   id: string;
   member_id: string;
-  entry_date: string;
+  meal_date: string;
   own_meal: number;
   guest_meal: number;
 };
+
+type MealInput = { own: string; guest: string };
 
 export default function MealsForm({
   members,
   meals,
   allMeals,
-  memberMap,
   groupId,
   monthId,
   currentUserRole,
@@ -31,43 +32,55 @@ export default function MealsForm({
   members: Member[];
   meals: MealRow[];
   allMeals: MealRow[];
-  memberMap: Record<string, string>;
   groupId: string;
   monthId: string;
-  currentUserRole: "admin" | "manager" | "member";
+  currentUserRole: "owner" | "admin" | "manager" | "member";
   currentUserMemberId: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
 
   const canManageMeals =
-    currentUserRole === "admin" || currentUserRole === "manager";
+    currentUserRole === "owner" ||
+    currentUserRole === "admin" ||
+    currentUserRole === "manager";
 
   const [entryDate, setEntryDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
-  const [memberId, setMemberId] = useState(members[0]?.id ?? "");
-  const [ownMeal, setOwnMeal] = useState("");
-  const [guestMeal, setGuestMeal] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [mealInputs, setMealInputs] = useState<Record<string, MealInput>>({});
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const availableMembers = useMemo(() => {
-    if (!entryDate) return members;
+  // Inline edit for a single history row (one member, one date).
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [historyOwn, setHistoryOwn] = useState("0");
+  const [historyGuest, setHistoryGuest] = useState("0");
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-    const takenMemberIds = new Set(
-      allMeals
-        .filter(
-          (meal) =>
-            meal.entry_date === entryDate &&
-            (!editingId || meal.id !== editingId)
-        )
-        .map((meal) => meal.member_id)
-    );
+  // Existing entries for the selected date, keyed by member id.
+  const existingForDate = useMemo(() => {
+    const map: Record<string, MealRow> = {};
+    for (const meal of allMeals) {
+      if (meal.meal_date === entryDate) {
+        map[meal.member_id] = meal;
+      }
+    }
+    return map;
+  }, [allMeals, entryDate]);
 
-    return members.filter((member) => !takenMemberIds.has(member.id));
-  }, [members, allMeals, entryDate, editingId]);
+  // Whenever the date (or the saved data) changes, rebuild the input grid:
+  // pre-fill from existing entries, otherwise default to 0.
+  useEffect(() => {
+    const next: Record<string, MealInput> = {};
+    for (const member of members) {
+      const existing = existingForDate[member.id];
+      next[member.id] = existing
+        ? { own: String(existing.own_meal), guest: String(existing.guest_meal) }
+        : { own: "0", guest: "0" };
+    }
+    setMealInputs(next);
+  }, [entryDate, existingForDate, members]);
 
   const visibleMembers = useMemo(() => {
     if (canManageMeals) return members;
@@ -79,8 +92,8 @@ export default function MealsForm({
       const history = meals
         .filter((meal) => meal.member_id === member.id)
         .sort((a, b) => {
-          if (a.entry_date === b.entry_date) return 0;
-          return a.entry_date < b.entry_date ? 1 : -1;
+          if (a.meal_date === b.meal_date) return 0;
+          return a.meal_date < b.meal_date ? 1 : -1;
         });
 
       const totalOwn = history.reduce(
@@ -139,59 +152,55 @@ export default function MealsForm({
     };
   }, [allMeals]);
 
-  useEffect(() => {
-    if (!entryDate) {
-      setMemberId(members[0]?.id ?? "");
-      return;
-    }
+  const enteredCount = useMemo(
+    () => Object.keys(existingForDate).length,
+    [existingForDate]
+  );
 
-    const stillExists = availableMembers.some((member) => member.id === memberId);
-
-    if (!stillExists) {
-      setMemberId(availableMembers[0]?.id ?? "");
-    }
-  }, [entryDate, availableMembers, memberId, members]);
-
-  function resetForm() {
-    setEntryDate("");
-    setMemberId(members[0]?.id ?? "");
-    setOwnMeal("");
-    setGuestMeal("");
-    setEditingId(null);
+  function updateInput(memberId: string, field: keyof MealInput, value: string) {
+    setMealInputs((prev) => ({
+      ...prev,
+      [memberId]: {
+        own: prev[memberId]?.own ?? "0",
+        guest: prev[memberId]?.guest ?? "0",
+        [field]: value,
+      },
+    }));
   }
 
-  function startEdit(item: MealRow) {
+  function setAllOwn(value: string) {
+    setMealInputs((prev) => {
+      const next: Record<string, MealInput> = {};
+      for (const member of members) {
+        next[member.id] = {
+          own: value,
+          guest: prev[member.id]?.guest ?? "0",
+        };
+      }
+      return next;
+    });
+  }
+
+  // Inline-edit a single meal-history row in place.
+  function startHistoryEdit(item: MealRow) {
+    if (!canManageMeals) return;
+    setEditingHistoryId(item.id);
+    setHistoryOwn(String(item.own_meal));
+    setHistoryGuest(String(item.guest_meal));
+    setMsg("");
+  }
+
+  function cancelHistoryEdit() {
+    setEditingHistoryId(null);
+    setHistoryOwn("0");
+    setHistoryGuest("0");
+  }
+
+  async function saveHistoryEdit(item: MealRow) {
     if (!canManageMeals) return;
 
-    setEditingId(item.id);
-    setEntryDate(item.entry_date);
-    setMemberId(item.member_id);
-    setOwnMeal(String(item.own_meal));
-    setGuestMeal(String(item.guest_meal));
-    setMsg("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  async function handleSave() {
-    setMsg("");
-
-    if (!canManageMeals) {
-      setMsg("Only admin or manager can add/edit meals.");
-      return;
-    }
-
-    if (!entryDate) {
-      setMsg("Select date first.");
-      return;
-    }
-
-    if (!memberId) {
-      setMsg("No available member found for this date.");
-      return;
-    }
-
-    const own = Number(ownMeal || 0);
-    const guest = Number(guestMeal || 0);
+    const own = Number(historyOwn || 0);
+    const guest = Number(historyGuest || 0);
 
     if (Number.isNaN(own) || Number.isNaN(guest)) {
       setMsg("Meal values must be valid numbers.");
@@ -203,67 +212,132 @@ export default function MealsForm({
       return;
     }
 
-    const duplicateEntry = allMeals.find(
-      (meal) =>
-        meal.entry_date === entryDate &&
-        meal.member_id === memberId &&
-        meal.id !== editingId
-    );
+    setHistoryLoading(true);
 
-    if (duplicateEntry) {
-      setMsg("This member already has a meal entry for the selected date.");
-      return;
-    }
+    const { error } = await supabase
+      .from("meal_entries")
+      .update({ own_meal: own, guest_meal: guest })
+      .eq("id", item.id);
 
-    setLoading(true);
-
-    if (editingId) {
-      const { error } = await supabase
-        .from("meal_entries")
-        .update({
-          entry_date: entryDate,
-          member_id: memberId,
-          own_meal: own,
-          guest_meal: guest,
-        })
-        .eq("id", editingId);
-
-      setLoading(false);
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-
-      setMsg("Meal updated successfully.");
-      resetForm();
-      router.refresh();
-      return;
-    }
-
-    const { error } = await supabase.from("meal_entries").insert({
-      group_id: groupId,
-      month_id: monthId,
-      member_id: memberId,
-      entry_date: entryDate,
-      own_meal: own,
-      guest_meal: guest,
-    });
-
-    setLoading(false);
+    setHistoryLoading(false);
 
     if (error) {
       setMsg(error.message);
       return;
     }
 
-    setMsg("Meal added successfully.");
-    resetForm();
+    cancelHistoryEdit();
+    setMsg(`Updated ${item.meal_date} meal.`);
     router.refresh();
   }
 
-  const noMembersAvailableForDate =
-    !!entryDate && availableMembers.length === 0 && !editingId;
+  async function handleSaveAll() {
+    setMsg("");
+
+    if (!canManageMeals) {
+      setMsg("Only admin or manager can add/edit meals.");
+      return;
+    }
+
+    if (!entryDate) {
+      setMsg("Select a date first.");
+      return;
+    }
+
+    // Validate every row before touching the database.
+    for (const member of members) {
+      const input = mealInputs[member.id] ?? { own: "0", guest: "0" };
+      const own = Number(input.own || 0);
+      const guest = Number(input.guest || 0);
+
+      if (Number.isNaN(own) || Number.isNaN(guest)) {
+        setMsg(`Meal value for ${member.full_name} must be a valid number.`);
+        return;
+      }
+
+      if (own < 0 || guest < 0) {
+        setMsg(`Meal count for ${member.full_name} cannot be negative.`);
+        return;
+      }
+    }
+
+    const toInsert: {
+      group_id: string;
+      month_id: string;
+      member_id: string;
+      meal_date: string;
+      own_meal: number;
+      guest_meal: number;
+    }[] = [];
+    const toUpdate: { id: string; own_meal: number; guest_meal: number }[] = [];
+
+    for (const member of members) {
+      const input = mealInputs[member.id] ?? { own: "0", guest: "0" };
+      const own = Number(input.own || 0);
+      const guest = Number(input.guest || 0);
+      const existing = existingForDate[member.id];
+
+      if (existing) {
+        // Only update rows that actually changed.
+        if (
+          Number(existing.own_meal) !== own ||
+          Number(existing.guest_meal) !== guest
+        ) {
+          toUpdate.push({ id: existing.id, own_meal: own, guest_meal: guest });
+        }
+      } else {
+        toInsert.push({
+          group_id: groupId,
+          month_id: monthId,
+          member_id: member.id,
+          meal_date: entryDate,
+          own_meal: own,
+          guest_meal: guest,
+        });
+      }
+    }
+
+    if (toInsert.length === 0 && toUpdate.length === 0) {
+      setMsg("No changes to save.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from("meal_entries").insert(toInsert);
+        if (error) throw error;
+      }
+
+      if (toUpdate.length > 0) {
+        const results = await Promise.all(
+          toUpdate.map((row) =>
+            supabase
+              .from("meal_entries")
+              .update({ own_meal: row.own_meal, guest_meal: row.guest_meal })
+              .eq("id", row.id)
+          )
+        );
+
+        const failed = results.find((result) => result.error);
+        if (failed?.error) throw failed.error;
+      }
+
+      setLoading(false);
+      setMsg(
+        `Saved meals for ${toInsert.length + toUpdate.length} member(s) on ${entryDate}.`
+      );
+      router.refresh();
+    } catch (err) {
+      setLoading(false);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: unknown }).message)
+          : "Failed to save meals.";
+      setMsg(message);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -271,16 +345,14 @@ export default function MealsForm({
         <h1 className="text-3xl font-bold text-slate-900">Meal Entry</h1>
         <p className="mt-2 text-slate-600">
           {canManageMeals
-            ? "Admin and manager can add and edit meal entries."
+            ? "Pick a date once, then enter meals for every member together."
             : "You can only view your own meal history and overall mess total meals."}
         </p>
       </div>
 
       {canManageMeals ? (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">
-            {editingId ? "Edit Meal Entry" : "Add Meal Entry"}
-          </h2>
+          <h2 className="text-xl font-bold text-slate-900">Add Daily Meals</h2>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div>
@@ -293,96 +365,134 @@ export default function MealsForm({
                 onChange={(e) => setEntryDate(e.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
               />
+              <p className="mt-2 text-xs text-slate-500">
+                {enteredCount > 0
+                  ? `${enteredCount} member(s) already have entries on this date — shown below and editable.`
+                  : "No entries yet on this date."}
+              </p>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Member
-              </label>
-              <select
-                value={memberId}
-                onChange={(e) => setMemberId(e.target.value)}
-                disabled={!editingId && (!entryDate || availableMembers.length === 0)}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:bg-slate-100"
-              >
-                {!entryDate ? (
-                  <option value="">Select date first</option>
-                ) : availableMembers.length === 0 ? (
-                  <option value="">No members available</option>
-                ) : (
-                  availableMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))
-                )}
-              </select>
-
-              {noMembersAvailableForDate ? (
-                <p className="mt-2 text-sm text-amber-600">
-                  All members already have meal entries for this date.
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Own Meal
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={ownMeal}
-                onChange={(e) => setOwnMeal(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
-                placeholder="0"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Guest Meal
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={guestMeal}
-                onChange={(e) => setGuestMeal(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
-                placeholder="0"
-              />
+            <div className="flex items-end">
+              <div className="w-full">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Quick fill (Own meal for everyone)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["0", "1", "2"].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAllOwn(value)}
+                      className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-teal-600 hover:text-teal-700"
+                    >
+                      Set all to {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
+          <div className="mt-6 overflow-x-auto">
+            <table className="min-w-[640px] border-separate border-spacing-y-2">
+              <thead>
+                <tr className="text-left text-sm text-slate-500">
+                  <th className="px-3 py-2">Member</th>
+                  <th className="px-3 py-2">Own Meal</th>
+                  <th className="px-3 py-2">Guest Meal</th>
+                  <th className="px-3 py-2">Total</th>
+                  <th className="px-3 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500"
+                    >
+                      No active members found.
+                    </td>
+                  </tr>
+                ) : (
+                  members.map((member) => {
+                    const input = mealInputs[member.id] ?? {
+                      own: "0",
+                      guest: "0",
+                    };
+                    const rowTotal =
+                      Number(input.own || 0) + Number(input.guest || 0);
+                    const alreadySaved = Boolean(existingForDate[member.id]);
+
+                    return (
+                      <tr key={member.id} className="bg-slate-50 text-sm">
+                        <td className="rounded-l-2xl px-3 py-3">
+                          <span className="font-semibold text-slate-900">
+                            {member.full_name}
+                          </span>
+                          <span className="ml-2 text-xs capitalize text-slate-500">
+                            {member.role}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={input.own}
+                            onChange={(e) =>
+                              updateInput(member.id, "own", e.target.value)
+                            }
+                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={input.guest}
+                            onChange={(e) =>
+                              updateInput(member.id, "guest", e.target.value)
+                            }
+                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600"
+                          />
+                        </td>
+                        <td className="px-3 py-3 font-semibold text-slate-900">
+                          {rowTotal.toFixed(1)}
+                        </td>
+                        <td className="rounded-r-2xl px-3 py-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              alreadySaved
+                                ? "bg-green-100 text-green-700"
+                                : "bg-slate-200 text-slate-600"
+                            }`}
+                          >
+                            {alreadySaved ? "Saved" : "New"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
           <p className="mt-4 text-xs text-slate-500">
-            Note: If someone had no meal on a date, save 0 so their history stays
-            complete. <b>And also select date first to meal entry</b>
+            Note: Everyone defaults to 0. Enter each member&apos;s meals, then
+            save once — members already saved on this date will be updated.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6">
             <button
-              onClick={handleSave}
-              disabled={
-                loading ||
-                !entryDate ||
-                !memberId ||
-                (!editingId && availableMembers.length === 0)
-              }
+              onClick={handleSaveAll}
+              disabled={loading || !entryDate || members.length === 0}
               className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Saving..." : editingId ? "Update Meal" : "Save Meal"}
+              {loading ? "Saving..." : "Save All Meals"}
             </button>
-
-            {editingId ? (
-              <button
-                onClick={resetForm}
-                className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel Edit
-              </button>
-            ) : null}
           </div>
 
           {msg ? <p className="mt-4 text-sm text-slate-700">{msg}</p> : null}
@@ -440,7 +550,7 @@ export default function MealsForm({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">
-                    {member.name}
+                    {member.full_name}
                   </h3>
                   <p className="text-sm capitalize text-slate-500">
                     Role: {member.role}
@@ -494,8 +604,11 @@ export default function MealsForm({
                       </tr>
                     ) : (
                       history.map((item) => {
-                        const total =
-                          Number(item.own_meal || 0) + Number(item.guest_meal || 0);
+                        const isEditing = editingHistoryId === item.id;
+                        const total = isEditing
+                          ? Number(historyOwn || 0) + Number(historyGuest || 0)
+                          : Number(item.own_meal || 0) +
+                            Number(item.guest_meal || 0);
 
                         return (
                           <tr
@@ -503,13 +616,37 @@ export default function MealsForm({
                             className="bg-white text-sm text-slate-700"
                           >
                             <td className="rounded-l-2xl px-3 py-3">
-                              {item.entry_date}
+                              {item.meal_date}
                             </td>
                             <td className="px-3 py-3">
-                              {Number(item.own_meal || 0).toFixed(1)}
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={historyOwn}
+                                  onChange={(e) => setHistoryOwn(e.target.value)}
+                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600"
+                                />
+                              ) : (
+                                Number(item.own_meal || 0).toFixed(1)
+                              )}
                             </td>
                             <td className="px-3 py-3">
-                              {Number(item.guest_meal || 0).toFixed(1)}
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={historyGuest}
+                                  onChange={(e) =>
+                                    setHistoryGuest(e.target.value)
+                                  }
+                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600"
+                                />
+                              ) : (
+                                Number(item.guest_meal || 0).toFixed(1)
+                              )}
                             </td>
                             <td
                               className={`px-3 py-3 font-semibold text-slate-900 ${canManageMeals ? "" : "rounded-r-2xl"
@@ -521,12 +658,31 @@ export default function MealsForm({
                             {canManageMeals ? (
                               <td className="rounded-r-2xl px-3 py-3">
                                 <div className="flex gap-2">
-                                  <button
-                                    onClick={() => startEdit(item)}
-                                    className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                  >
-                                    Edit
-                                  </button>
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        onClick={() => saveHistoryEdit(item)}
+                                        disabled={historyLoading}
+                                        className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        {historyLoading ? "Saving..." : "Save"}
+                                      </button>
+                                      <button
+                                        onClick={cancelHistoryEdit}
+                                        disabled={historyLoading}
+                                        className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => startHistoryEdit(item)}
+                                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             ) : null}

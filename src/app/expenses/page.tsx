@@ -6,26 +6,18 @@ import { getUserGroupContext } from "@/lib/group-access";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
+  full_name: string;
+  role: "owner" | "admin" | "manager" | "member";
 };
 
 type ExpenseItem = {
   id: string;
-  entry_date: string;
-  category:
-    | "bazar"
-    | "wifi"
-    | "utility"
-    | "electricity"
-    | "gas"
-    | "bua"
-    | "moyla"
-    | "pani"
-    | "other";
+  expense_date: string;
+  expense_type: "bazar" | "shared";
   amount: number;
-  note: string | null;
-  paid_by_member_id: string;
+  title: string;
+  description: string | null;
+  paid_by_member_id: string | null;
 };
 
 export default async function ExpensesPage() {
@@ -47,9 +39,9 @@ export default async function ExpensesPage() {
 
   const { data: membersData } = await supabase
     .from("members")
-    .select("id, name, role")
+    .select("id, full_name, role")
     .eq("group_id", group.id)
-    .eq("is_active", true)
+    .eq("status", "active")
     .order("created_at", { ascending: true });
 
   const { data: month } = await supabase
@@ -73,24 +65,19 @@ export default async function ExpensesPage() {
 
   const { data: expenseRows } = await supabase
     .from("expense_entries")
-    .select("id, entry_date, category, amount, note, paid_by_member_id")
+    .select("id, expense_date, expense_type, amount, title, description, paid_by_member_id")
     .eq("month_id", month.id)
-    .order("entry_date", { ascending: false })
+    .order("expense_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   const members: Member[] = membersData ?? [];
   const expenses: ExpenseItem[] = expenseRows ?? [];
-
-  const memberMap = Object.fromEntries(
-    members.map((item) => [item.id, item.name])
-  );
 
   return (
     <AppShell>
       <ExpensesForm
         members={members}
         expenses={expenses}
-        memberMap={memberMap}
         groupId={group.id}
         monthId={month.id}
         currentUserRole={member.role}

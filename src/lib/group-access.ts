@@ -1,21 +1,28 @@
-import { Role } from "@/types";
+import { MemberStatus, Role } from "@/types";
 
 export type CurrentGroup = {
   id: string;
   name: string;
-  join_code: string | null;
+  join_code: string;
+  owner_id: string;
 };
 
 export type CurrentMember = {
   id: string;
   group_id: string;
+  user_id: string | null;
   role: Role;
-  name: string;
-  is_active: boolean;
-  monthly_rent: number;
-  mobile_number: string;
-  nid_number: string | null;
+  full_name: string;
+  email: string | null;
+  phone: string;
+  nid: string | null;
+  status: MemberStatus;
 };
+
+const MEMBER_COLUMNS =
+  "id, group_id, user_id, role, full_name, email, phone, nid, status";
+
+const GROUP_COLUMNS = "id, name, join_code, owner_id";
 
 export async function getUserGroupContext(
   supabase: any,
@@ -26,18 +33,16 @@ export async function getUserGroupContext(
 }> {
   const { data: linkedMember } = await supabase
     .from("members")
-    .select(
-      "id, group_id, role, name, is_active, monthly_rent, mobile_number, nid_number"
-    )
+    .select(MEMBER_COLUMNS)
     .eq("user_id", userId)
-    .eq("is_active", true)
+    .eq("status", "active")
     .limit(1)
     .maybeSingle();
 
   if (linkedMember) {
     const { data: linkedGroup } = await supabase
       .from("mess_groups")
-      .select("id, name, join_code")
+      .select(GROUP_COLUMNS)
       .eq("id", linkedMember.group_id)
       .single();
 
@@ -49,8 +54,8 @@ export async function getUserGroupContext(
 
   const { data: ownedGroup } = await supabase
     .from("mess_groups")
-    .select("id, name, join_code")
-    .eq("created_by", userId)
+    .select(GROUP_COLUMNS)
+    .eq("owner_id", userId)
     .limit(1)
     .maybeSingle();
 
@@ -63,9 +68,7 @@ export async function getUserGroupContext(
 
   const { data: ownerMember } = await supabase
     .from("members")
-    .select(
-      "id, group_id, role, name, is_active, monthly_rent, mobile_number, nid_number"
-    )
+    .select(MEMBER_COLUMNS)
     .eq("group_id", ownedGroup.id)
     .eq("user_id", userId)
     .limit(1)
@@ -76,14 +79,15 @@ export async function getUserGroupContext(
     member:
       ownerMember ??
       ({
-        id: "owner-admin",
+        id: "owner-fallback",
         group_id: ownedGroup.id,
-        role: "admin",
-        name: "Admin",
-        is_active: true,
-        monthly_rent: 0,
-        mobile_number: "",
-        nid_number: null,
+        user_id: userId,
+        role: "owner",
+        full_name: "Owner",
+        email: null,
+        phone: "",
+        nid: null,
+        status: "active",
       } as CurrentMember),
   };
 }

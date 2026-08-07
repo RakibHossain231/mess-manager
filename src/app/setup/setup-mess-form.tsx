@@ -32,7 +32,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("full_name, mobile_number")
+      .select("full_name, phone")
       .eq("id", userId)
       .single();
 
@@ -43,7 +43,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
     }
 
     const profileName = (profile.full_name || "").trim();
-    const profileMobile = (profile.mobile_number || "").trim();
+    const profileMobile = (profile.phone || "").trim();
 
     if (!profileName || !profileMobile) {
       setErrorText("Your profile must have full name and mobile number.");
@@ -55,10 +55,9 @@ export default function SetupMessForm({ userId }: { userId: string }) {
       .from("mess_groups")
       .insert({
         name: messName.trim(),
-        mode,
         payment_deadline: Number(paymentDeadline),
         currency,
-        created_by: userId,
+        owner_id: userId,
         join_code: generateJoinCode(),
       })
       .select("id")
@@ -73,12 +72,11 @@ export default function SetupMessForm({ userId }: { userId: string }) {
     const { error: memberError } = await supabase.from("members").insert({
       group_id: groupData.id,
       user_id: userId,
-      name: profileName,
-      mobile_number: profileMobile,
-      nid_number: null,
-      role: "admin",
-      monthly_rent: 0,
-      is_active: true,
+      full_name: profileName,
+      phone: profileMobile,
+      nid: null,
+      role: "owner",
+      status: "active",
     });
 
     if (memberError) {
@@ -111,7 +109,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
     if (!monthError && monthData) {
       const { data: adminMember } = await supabase
         .from("members")
-        .select("id, monthly_rent")
+        .select("id")
         .eq("group_id", groupData.id)
         .eq("user_id", userId)
         .single();
@@ -120,7 +118,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
         await supabase.from("member_monthly_charges").insert({
           month_id: monthData.id,
           member_id: adminMember.id,
-          rent_amount: adminMember.monthly_rent,
+          rent: 0,
         });
       }
     }

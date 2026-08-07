@@ -3,22 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import MembersManager from "@/app/members/members-manager";
 import { getUserGroupContext } from "@/lib/group-access";
-
-type Member = {
-  id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
-  mobile_number: string;
-  nid_number: string | null;
-  is_active: boolean;
-};
-
-type ChargeRow = {
-  id: string;
-  member_id: string;
-  rent_amount: number;
-};
+import type {
+  Member,
+  MemberDefaultCharge,
+  MemberMonthlyCharge,
+} from "@/types";
 
 export default async function MembersPage() {
   const supabase = await createClient();
@@ -39,12 +28,29 @@ export default async function MembersPage() {
 
   const { data: membersData } = await supabase
     .from("members")
-    .select(
-      "id, name, role, monthly_rent, mobile_number, nid_number, is_active"
-    )
+    .select("*")
     .eq("group_id", group.id)
     .order("created_at", { ascending: true });
 
+  const members: Member[] = membersData ?? [];
+
+  // Default charges are keyed by member_id (one row per member)
+  const { data: defaultsData } = await supabase
+    .from("member_default_charges")
+    .select("*")
+    .in(
+      "member_id",
+      members.map((m) => m.id)
+    );
+
+  const defaultChargeMap = new Map(
+    (defaultsData as MemberDefaultCharge[] | null)?.map((c) => [
+      c.member_id,
+      c,
+    ]) ?? []
+  );
+
+  // Find the open month for this mess
   const { data: month } = await supabase
     .from("months")
     .select("id, label")
@@ -53,17 +59,15 @@ export default async function MembersPage() {
     .limit(1)
     .maybeSingle();
 
-  const members: Member[] = membersData ?? [];
-
-  let charges: ChargeRow[] = [];
+  let monthlyCharges: MemberMonthlyCharge[] = [];
 
   if (month) {
     const { data: chargesData } = await supabase
       .from("member_monthly_charges")
-      .select("id, member_id, rent_amount")
+      .select("*")
       .eq("month_id", month.id);
 
-    charges = chargesData ?? [];
+    monthlyCharges = chargesData ?? [];
   }
 
   return (
@@ -72,7 +76,8 @@ export default async function MembersPage() {
         groupId={group.id}
         members={members}
         monthId={month?.id ?? null}
-        charges={charges}
+        defaultCharges={defaultChargeMap}
+        monthlyCharges={monthlyCharges}
         currentUserRole={member.role}
         currentUserMemberId={member.id}
       />

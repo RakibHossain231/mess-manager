@@ -6,14 +6,14 @@ import { getUserGroupContext } from "@/lib/group-access";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
+  full_name: string;
+  role: "owner" | "admin" | "manager" | "member";
 };
 
 type MealRow = {
   id: string;
   member_id: string;
-  entry_date: string;
+  meal_date: string;
   own_meal: number;
   guest_meal: number;
 };
@@ -35,9 +35,9 @@ export default async function MealsPage() {
 
   const { data: membersData } = await supabase
     .from("members")
-    .select("id, name, role")
+    .select("id, full_name, role")
     .eq("group_id", group.id)
-    .eq("is_active", true)
+    .eq("status", "active")
     .order("created_at", { ascending: true });
 
   const { data: month } = await supabase
@@ -61,9 +61,9 @@ export default async function MealsPage() {
 
   const { data: allMealRows } = await supabase
     .from("meal_entries")
-    .select("id, member_id, entry_date, own_meal, guest_meal")
+    .select("id, member_id, meal_date, own_meal, guest_meal")
     .eq("month_id", month.id)
-    .order("entry_date", { ascending: false })
+    .order("meal_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   let meals: MealRow[] = allMealRows ?? [];
@@ -73,7 +73,6 @@ export default async function MealsPage() {
   }
 
   const members: Member[] = membersData ?? [];
-  const memberMap = Object.fromEntries(members.map((m) => [m.id, m.name]));
 
   return (
     <AppShell>
@@ -81,7 +80,6 @@ export default async function MealsPage() {
         members={members}
         meals={meals}
         allMeals={allMealRows ?? []}
-        memberMap={memberMap}
         groupId={group.id}
         monthId={month.id}
         currentUserRole={member.role}

@@ -6,28 +6,23 @@ import { createClient } from "@/lib/supabase/client";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
+  full_name: string;
+  role: "owner" | "admin" | "manager" | "member";
 };
 
 type ExpenseItem = {
   id: string;
-  entry_date: string;
-  category:
-  | "bazar"
-  | "wifi"
-  | "utility"
-  | "electricity"
-  | "gas"
-  | "bua"
-  | "moyla"
-  | "pani"
-  | "other";
+  expense_date: string;
+  expense_type: "bazar" | "shared";
   amount: number;
-  note: string | null;
-  paid_by_member_id: string;
+  title: string;
+  description: string | null;
+  paid_by_member_id: string | null;
 };
 
+// Shared monthly bills. In the new schema these are stored as expense_entries
+// rows with expense_type = "shared"; the category is kept in the title so the
+// labelled inputs below still map one-to-one.
 const sharedCategories = [
   { key: "wifi", label: "WiFi" },
   { key: "utility", label: "Lift Bill" },
@@ -41,7 +36,6 @@ const sharedCategories = [
 export default function ExpensesForm({
   members,
   expenses,
-  memberMap,
   groupId,
   monthId,
   currentUserRole,
@@ -49,32 +43,34 @@ export default function ExpensesForm({
 }: {
   members: Member[];
   expenses: ExpenseItem[];
-  memberMap: Record<string, string>;
   groupId: string;
   monthId: string;
-  currentUserRole: "admin" | "manager" | "member";
+  currentUserRole: "owner" | "admin" | "manager" | "member";
   currentUserMemberId: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
 
-  const isAdmin = currentUserRole === "admin";
+  const isAdmin = currentUserRole === "owner" || currentUserRole === "admin";
   const isMember = currentUserRole === "member";
   const canManageBazar =
-    currentUserRole === "admin" || currentUserRole === "manager";
+    currentUserRole === "owner" ||
+    currentUserRole === "admin" ||
+    currentUserRole === "manager";
 
+  // Shared bills keyed by their title (which holds the category label).
   const sharedExpenseMap = useMemo(() => {
     const map = new Map<string, ExpenseItem>();
     for (const item of expenses) {
-      if (item.category !== "bazar" && item.category !== "other") {
-        map.set(item.category, item);
+      if (item.expense_type === "shared") {
+        map.set(item.title, item);
       }
     }
     return map;
   }, [expenses]);
 
   const bazarExpenses = useMemo(
-    () => expenses.filter((item) => item.category === "bazar"),
+    () => expenses.filter((item) => item.expense_type === "bazar"),
     [expenses]
   );
 
@@ -84,7 +80,7 @@ export default function ExpensesForm({
   );
 
   const totalSharedBills = expenses
-    .filter((item) => item.category !== "bazar")
+    .filter((item) => item.expense_type === "shared")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const bazarByMember = useMemo(() => {
@@ -116,7 +112,7 @@ export default function ExpensesForm({
     const initial: Record<string, string> = {};
     for (const category of sharedCategories) {
       initial[category.key] = String(
-        Number(sharedExpenseMap.get(category.key)?.amount ?? 0)
+        Number(sharedExpenseMap.get(category.label)?.amount ?? 0)
       );
     }
     return initial;
@@ -132,6 +128,10 @@ export default function ExpensesForm({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [editingBazarId, setEditingBazarId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
   const [bazarMsg, setBazarMsg] = useState("");
   const [bazarLoading, setBazarLoading] = useState(false);
 
@@ -154,7 +154,7 @@ export default function ExpensesForm({
 
     for (const category of sharedCategories) {
       const amountValue = Number(sharedValues[category.key] || 0);
-      const existing = sharedExpenseMap.get(category.key);
+      const existing = sharedExpenseMap.get(category.label);
 
       if (existing) {
         const { error } = await supabase
@@ -175,9 +175,10 @@ export default function ExpensesForm({
           month_id: monthId,
           paid_by_member_id: currentUserMemberId,
           amount: amountValue,
-          category: category.key,
-          note: `${category.label} monthly bill`,
-          entry_date: new Date().toISOString().slice(0, 10),
+          expense_type: "shared",
+          title: category.label,
+          description: `${category.label} monthly bill`,
+          expense_date: new Date().toISOString().slice(0, 10),
         });
 
         if (error) {
@@ -194,20 +195,66 @@ export default function ExpensesForm({
   }
 
   function resetBazarForm() {
-    setEntryDate("");
+    setEntryDate(new Date().toISOString().slice(0, 10));
     setPaidByMemberId(currentUserMemberId);
     setAmount("");
     setNote("");
-    setEditingBazarId(null);
   }
 
+  // Inline-edit a single bazar row in place (date / amount / note).
   function startBazarEdit(item: ExpenseItem) {
+    if (!canManageBazar) return;
     setEditingBazarId(item.id);
-    setEntryDate(item.entry_date);
-    setPaidByMemberId(item.paid_by_member_id);
-    setAmount(String(item.amount));
-    setNote(item.note || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setEditDate(item.expense_date);
+    setEditAmount(String(item.amount));
+    setEditNote(item.description || "");
+    setBazarMsg("");
+  }
+
+  function cancelBazarEdit() {
+    setEditingBazarId(null);
+    setEditDate("");
+    setEditAmount("");
+    setEditNote("");
+  }
+
+  async function saveBazarEdit(item: ExpenseItem) {
+    if (!canManageBazar) {
+      setBazarMsg("Only admin or manager can edit bazar.");
+      return;
+    }
+
+    if (!editDate) {
+      setBazarMsg("Select a date.");
+      return;
+    }
+
+    if (!editAmount || Number(editAmount) <= 0) {
+      setBazarMsg("Enter a valid amount.");
+      return;
+    }
+
+    setEditLoading(true);
+
+    const { error } = await supabase
+      .from("expense_entries")
+      .update({
+        expense_date: editDate,
+        amount: Number(editAmount),
+        description: editNote.trim() || null,
+      })
+      .eq("id", item.id);
+
+    setEditLoading(false);
+
+    if (error) {
+      setBazarMsg(error.message);
+      return;
+    }
+
+    cancelBazarEdit();
+    setBazarMsg("Bazar updated successfully.");
+    router.refresh();
   }
 
   async function handleSaveBazar() {
@@ -235,38 +282,15 @@ export default function ExpensesForm({
 
     setBazarLoading(true);
 
-    if (editingBazarId) {
-      const { error } = await supabase
-        .from("expense_entries")
-        .update({
-          entry_date: entryDate,
-          paid_by_member_id: paidByMemberId,
-          amount: Number(amount),
-          note: note.trim() || null,
-        })
-        .eq("id", editingBazarId);
-
-      setBazarLoading(false);
-
-      if (error) {
-        setBazarMsg(error.message);
-        return;
-      }
-
-      setBazarMsg("Bazar updated successfully.");
-      resetBazarForm();
-      router.refresh();
-      return;
-    }
-
     const { error } = await supabase.from("expense_entries").insert({
       group_id: groupId,
       month_id: monthId,
       paid_by_member_id: paidByMemberId,
       amount: Number(amount),
-      category: "bazar",
-      note: note.trim() || null,
-      entry_date: entryDate,
+      expense_type: "bazar",
+      title: "Bazar",
+      description: note.trim() || null,
+      expense_date: entryDate,
     });
 
     setBazarLoading(false);
@@ -366,9 +390,7 @@ export default function ExpensesForm({
       {canManageBazar ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-lg font-bold text-slate-900">
-              {editingBazarId ? "Edit Bazar Entry" : "Add Bazar Entry"}
-            </h2>
+            <h2 className="text-lg font-bold text-slate-900">Add Bazar Entry</h2>
 
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <p className="text-xs text-slate-500">Total Bazar</p>
@@ -402,7 +424,7 @@ export default function ExpensesForm({
               >
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.name}
+                    {member.full_name}
                   </option>
                 ))}
               </select>
@@ -441,23 +463,10 @@ export default function ExpensesForm({
               disabled={bazarLoading}
               className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {bazarLoading
-                ? "Saving..."
-                : editingBazarId
-                  ? "Update"
-                  : "Save"}
+              {bazarLoading ? "Saving..." : "Save"}
             </button>
 
-            {editingBazarId && (
-              <button
-                onClick={resetBazarForm}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
-              >
-                Cancel
-              </button>
-            )}
-
-            {bazarMsg ? (
+            {bazarMsg && !editingBazarId ? (
               <p className="text-xs text-slate-600">{bazarMsg}</p>
             ) : null}
           </div>
@@ -508,7 +517,7 @@ export default function ExpensesForm({
                 <div className="flex flex-col gap-3 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
-                      {member.name}
+                      {member.full_name}
                     </h3>
                     <p className="text-sm capitalize text-slate-500">
                       {member.role}
@@ -529,89 +538,166 @@ export default function ExpensesForm({
                       No bazar history for this member.
                     </div>
                   ) : (
-                    items.map((expense) => (
-                      <div
-                        key={expense.id}
-                        className="rounded-2xl bg-white px-4 py-4"
-                      >
-                        <div className="sm:hidden space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-slate-900">
-                              {expense.entry_date}
+                    items.map((expense) => {
+                      const isEditing = editingBazarId === expense.id;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={expense.id}
+                            className="rounded-2xl bg-teal-50/40 px-4 py-4"
+                          >
+                            <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr_1.6fr_auto] sm:items-end">
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                  Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={editDate}
+                                  onChange={(e) => setEditDate(e.target.value)}
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                  Amount
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={editAmount}
+                                  onChange={(e) => setEditAmount(e.target.value)}
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                  Note
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editNote}
+                                  onChange={(e) => setEditNote(e.target.value)}
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                  placeholder="No note"
+                                />
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => saveBazarEdit(expense)}
+                                  disabled={editLoading}
+                                  className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {editLoading ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  onClick={cancelBazarEdit}
+                                  disabled={editLoading}
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+
+                            {bazarMsg ? (
+                              <p className="mt-2 text-xs text-slate-600">
+                                {bazarMsg}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={expense.id}
+                          className="rounded-2xl bg-white px-4 py-4"
+                        >
+                          <div className="sm:hidden space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {expense.expense_date}
+                              </p>
+                              <p className="text-sm font-bold text-slate-900">
+                                ৳ {Number(expense.amount).toFixed(0)}
+                              </p>
+                            </div>
+
+                            <p className="text-sm text-slate-600">
+                              {expense.description || "No note"}
                             </p>
-                            <p className="text-sm font-bold text-slate-900">
+
+                            <div>
+                              {canManageBazar ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => startBazarEdit(expense)}
+                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
+                                  >
+                                    Edit
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteBazar(expense.id)}
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-500">
+                                  View only
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="hidden sm:grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr] items-center gap-3">
+                            <p className="text-sm text-slate-800">
+                              {expense.expense_date}
+                            </p>
+
+                            <p className="text-sm text-slate-800">
                               ৳ {Number(expense.amount).toFixed(0)}
                             </p>
-                          </div>
 
-                          <p className="text-sm text-slate-600">
-                            {expense.note || "No note"}
-                          </p>
+                            <p className="truncate text-sm text-slate-600">
+                              {expense.description || "No note"}
+                            </p>
 
-                          <div>
-                            {canManageBazar ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => startBazarEdit(expense)}
-                                  className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
-                                >
-                                  Edit
-                                </button>
+                            <div>
+                              {canManageBazar ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => startBazarEdit(expense)}
+                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
+                                  >
+                                    Edit
+                                  </button>
 
-                                <button
-                                  onClick={() => handleDeleteBazar(expense.id)}
-                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-500">
-                                View only
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="hidden sm:grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr] items-center gap-3">
-                          <p className="text-sm text-slate-800">
-                            {expense.entry_date}
-                          </p>
-
-                          <p className="text-sm text-slate-800">
-                            ৳ {Number(expense.amount).toFixed(0)}
-                          </p>
-
-                          <p className="truncate text-sm text-slate-600">
-                            {expense.note || "No note"}
-                          </p>
-
-                          <div>
-                            {canManageBazar ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => startBazarEdit(expense)}
-                                  className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
-                                >
-                                  Edit
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteBazar(expense.id)}
-                                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-500">
-                                View only
-                              </span>
-                            )}
+                                  <button
+                                    onClick={() => handleDeleteBazar(expense.id)}
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-500">
+                                  View only
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

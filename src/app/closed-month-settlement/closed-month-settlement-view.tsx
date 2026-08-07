@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Role } from "@/types";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
+  full_name: string;
 };
 
 type MealEntry = {
@@ -18,20 +17,32 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
-  category: string;
+  expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
 };
 
+// One row per member in member_monthly_charges (the snapshot keeps these at
+// month-close time so closed months never change).
 type ChargeRow = {
   member_id: string;
-  rent_amount: number;
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+  advance: number;
+  discount: number;
+  previous_due: number;
 };
 
 type MonthRow = {
   id: string;
   label: string;
-  status: "open" | "closed";
+  status: "open" | "closed" | "archived";
   created_at?: string;
 };
 
@@ -63,17 +74,33 @@ export default function ClosedMonthSettlementView({
   expenses: ExpenseEntry[];
   charges: ChargeRow[];
   settlements: SettlementRow[];
-  viewerRole: "admin" | "manager" | "member";
+  viewerRole: Role;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const canEdit = viewerRole === "admin" || viewerRole === "manager";
+  const canEdit =
+    viewerRole === "owner" || viewerRole === "admin" || viewerRole === "manager";
 
+  // Sum all fixed charges from member_monthly_charges for each member.
   const chargeMap = useMemo(() => {
     return new Map(
-      charges.map((item) => [item.member_id, Number(item.rent_amount || 0)])
+      charges.map((item) => {
+        const total =
+          Number(item.rent || 0) +
+          Number(item.wifi || 0) +
+          Number(item.electricity || 0) +
+          Number(item.water || 0) +
+          Number(item.gas || 0) +
+          Number(item.khala_bill || 0) +
+          Number(item.utility || 0) +
+          Number(item.others || 0) -
+          Number(item.discount || 0) -
+          Number(item.advance || 0) +
+          Number(item.previous_due || 0);
+        return [item.member_id, total] as const;
+      })
     );
   }, [charges]);
 
@@ -92,7 +119,7 @@ export default function ClosedMonthSettlementView({
 
   // Important:
   // Even if page accidentally sends extra members, view will only show members
-  // who have rent charge in this selected closed month.
+  // who have a charge row in this selected closed month.
   const monthMembers = useMemo(() => {
     return members.filter((member) => chargeMap.has(member.id));
   }, [members, chargeMap]);
@@ -103,11 +130,11 @@ export default function ClosedMonthSettlementView({
   );
 
   const totalBazar = expenses
-    .filter((item) => item.category === "bazar")
+    .filter((item) => item.expense_type === "bazar")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalSharedBills = expenses
-    .filter((item) => item.category !== "bazar")
+    .filter((item) => item.expense_type === "shared")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
@@ -133,15 +160,16 @@ export default function ClosedMonthSettlementView({
 
       const bazarPaid = expenses
         .filter(
-          (item) => item.category === "bazar" && item.paid_by_member_id === member.id
+          (item) =>
+            item.expense_type === "bazar" && item.paid_by_member_id === member.id
         )
         .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-      const rent = Number(chargeMap.get(member.id) ?? 0);
+      const chargesTotal = Number(chargeMap.get(member.id) ?? 0);
 
       const mealCost = totalMeal * mealRate;
       const sharedShare = perMemberSharedCost;
-      const rawFinalBalance = bazarPaid - mealCost - sharedShare - rent;
+      const rawFinalBalance = bazarPaid - mealCost - sharedShare - chargesTotal;
 
       const computedFinalType: "pay" | "receive" =
         rawFinalBalance >= 0 ? "receive" : "pay";
@@ -173,7 +201,7 @@ export default function ClosedMonthSettlementView({
 
       return {
         id: member.id,
-        name: member.name,
+        name: member.full_name,
         finalType,
         finalAmount,
         paidAmount,
@@ -231,27 +259,45 @@ export default function ClosedMonthSettlementView({
     }
 
     const nextPaidAmount = Math.min(row.paidAmount + entryAmount, row.finalAmount);
+    const nextDue = Math.max(row.finalAmount - nextPaidAmount, 0);
+    const nextStatus =
+      nextDue <= 0 ? "paid" : nextPaidAmount > 0 ? "partial" : "unpaid";
 
     setSavingId(row.id);
 
-    const { error } = await supabase.from("month_settlements").upsert(
-      {
-        group_id: groupId,
-        month_id: selectedMonthId,
-        member_id: row.id,
-        final_amount: row.finalAmount,
-        final_type: row.finalType,
+    // Ledger row for this payment, then roll the aggregates on the frozen
+    // settlement row so the report/settlement pages reflect it immediately.
+    const { error: paymentError } = await supabase.from("payments").insert({
+      group_id: groupId,
+      month_id: selectedMonthId,
+      member_id: row.id,
+      amount: entryAmount,
+      payment_date: new Date().toISOString().slice(0, 10),
+      payment_method: "cash",
+      status: nextStatus,
+    });
+
+    if (paymentError) {
+      setSavingId(null);
+      alert(paymentError.message);
+      return;
+    }
+
+    const { error: settlementError } = await supabase
+      .from("settlements")
+      .update({
         paid_amount: nextPaidAmount,
-      },
-      {
-        onConflict: "group_id,month_id,member_id",
-      }
-    );
+        due_amount: nextDue,
+        status: nextStatus,
+      })
+      .eq("group_id", groupId)
+      .eq("month_id", selectedMonthId)
+      .eq("member_id", row.id);
 
     setSavingId(null);
 
-    if (error) {
-      alert(error.message);
+    if (settlementError) {
+      alert(settlementError.message);
       return;
     }
 
@@ -275,7 +321,7 @@ export default function ClosedMonthSettlementView({
               <b>{monthLabel}</b>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Admin and manager can edit. Members can view only.
+              Owner, admin and manager can edit. Members can view only.
             </p>
           </div>
 

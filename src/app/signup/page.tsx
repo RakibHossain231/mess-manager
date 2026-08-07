@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
 
@@ -25,8 +26,20 @@ export default function SignupPage() {
     const cleanMobile = mobileNumber.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanName || !cleanMobile || !cleanEmail || !password) {
+    if (!cleanName || !cleanMobile || !cleanEmail || !password || !confirmPassword) {
       setErrorText("Full name, mobile number, email, and password are required.");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorText("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
+
+    if (!/^01\d{9}$/.test(cleanMobile)) {
+      setErrorText("Enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX).");
       setLoading(false);
       return;
     }
@@ -59,7 +72,7 @@ export default function SignupPage() {
       id: user.id,
       full_name: cleanName,
       email: cleanEmail,
-      mobile_number: cleanMobile,
+      phone: cleanMobile,
     });
 
     if (profileError) {
@@ -69,7 +82,7 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    router.push("/");
+    router.push("/login?verify=true");
     router.refresh();
   }
 
@@ -134,6 +147,21 @@ export default function SignupPage() {
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              placeholder="Re-enter your password"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
             />

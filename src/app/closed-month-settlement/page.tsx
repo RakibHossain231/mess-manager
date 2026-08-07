@@ -3,13 +3,11 @@ import AppShell from "@/components/layout/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { getUserGroupContext } from "@/lib/group-access";
 import ClosedMonthSettlementView from "./closed-month-settlement-view";
-import { snapshotToLiveReportProps } from "@/lib/report-snapshot";
+import { settlementsToReportProps } from "@/lib/report-snapshot";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
+  full_name: string;
 };
 
 type MealEntry = {
@@ -19,14 +17,24 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
-  category: string;
+  expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
 };
 
 type ChargeRow = {
   member_id: string;
-  rent_amount: number;
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+  advance: number;
+  discount: number;
+  previous_due: number;
 };
 
 type MonthRow = {
@@ -95,14 +103,15 @@ export default async function ClosedMonthSettlementPage({
     closedMonths.find((item) => item.id === selectedMonthIdFromQuery) ??
     closedMonths[0];
 
-  const { data: snapshotData } = await supabase
-    .from("closed_month_reports")
-    .select("report_data")
+  const { data: settlementsData } = await supabase
+    .from("settlements")
+    .select(
+      "member_id, total_own_meal, total_guest_meal, meal_rate, bazar_paid, shared_expense, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due, final_amount, paid_amount"
+    )
     .eq("group_id", group.id)
-    .eq("month_id", selectedMonth.id)
-    .maybeSingle();
+    .eq("month_id", selectedMonth.id);
 
-  if (!snapshotData?.report_data) {
+  if (!settlementsData || settlementsData.length === 0) {
     return (
       <AppShell>
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -110,22 +119,24 @@ export default async function ClosedMonthSettlementPage({
             Closed Month Settlement
           </h1>
           <p className="mt-2 text-slate-600">
-            No saved snapshot found for {selectedMonth.label}. This will work for
-            months closed after the snapshot update.
+            No saved settlement found for {selectedMonth.label}. This appears for
+            months closed after the settlement update.
           </p>
         </div>
       </AppShell>
     );
   }
 
-  const snapshotProps = snapshotToLiveReportProps(snapshotData.report_data);
-  const { data: settlementsData } = await supabase
-    .from("month_settlements")
-    .select("member_id, final_amount, final_type, paid_amount")
-    .eq("group_id", group.id)
-    .eq("month_id", selectedMonth.id);
+  const { data: membersData } = await supabase
+    .from("members")
+    .select("id, full_name")
+    .eq("group_id", group.id);
 
-  const settlements: SettlementRow[] = (settlementsData ?? []) as SettlementRow[];
+  const nameMap = Object.fromEntries(
+    (membersData ?? []).map((item) => [item.id, item.full_name])
+  );
+
+  const props = settlementsToReportProps(settlementsData, nameMap);
 
   return (
     <AppShell>
@@ -134,11 +145,11 @@ export default async function ClosedMonthSettlementPage({
         monthLabel={selectedMonth.label}
         selectedMonthId={selectedMonth.id}
         months={closedMonths}
-        members={snapshotProps.members as Member[]}
-        meals={snapshotProps.meals as MealEntry[]}
-        expenses={snapshotProps.expenses as ExpenseEntry[]}
-        charges={snapshotProps.charges as ChargeRow[]}
-        settlements={settlements}
+        members={props.members as Member[]}
+        meals={props.meals as MealEntry[]}
+        expenses={props.expenses as ExpenseEntry[]}
+        charges={props.charges as ChargeRow[]}
+        settlements={props.settlementRows as SettlementRow[]}
         viewerRole={member.role}
       />
     </AppShell>

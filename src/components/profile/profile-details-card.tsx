@@ -3,6 +3,17 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+type MemberCharges = {
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+};
+
 type ProfileDetailsCardProps = {
   memberId: string;
   name: string;
@@ -11,9 +22,20 @@ type ProfileDetailsCardProps = {
   mobileNumber?: string | null;
   nidNumber?: string | null;
   groupName: string;
-  monthlyRent?: number | null;
+  charges?: MemberCharges | null;
   monthLabel?: string | null;
 };
+
+const CHARGE_LABELS: { key: keyof MemberCharges; label: string }[] = [
+  { key: "rent", label: "Rent" },
+  { key: "wifi", label: "Wifi" },
+  { key: "electricity", label: "Electricity" },
+  { key: "water", label: "Water" },
+  { key: "gas", label: "Gas" },
+  { key: "khala_bill", label: "Khala Bill" },
+  { key: "utility", label: "Utility" },
+  { key: "others", label: "Others" },
+];
 
 function formatRole(role: string) {
   if (role === "admin") return "Admin";
@@ -113,7 +135,7 @@ export default function ProfileDetailsCard({
   mobileNumber,
   nidNumber,
   groupName,
-  monthlyRent,
+  charges,
   monthLabel,
 }: ProfileDetailsCardProps) {
   const supabase = createClient();
@@ -123,6 +145,35 @@ export default function ProfileDetailsCard({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  // Change-password state (no old password required, per user preference).
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+
+  const chargeRows = useMemo(() => {
+    const source = charges ?? {
+      rent: 0,
+      wifi: 0,
+      electricity: 0,
+      water: 0,
+      gas: 0,
+      khala_bill: 0,
+      utility: 0,
+      others: 0,
+    };
+    return CHARGE_LABELS.map(({ key, label }) => ({
+      key,
+      label,
+      value: Number(source[key] ?? 0),
+    }));
+  }, [charges]);
+
+  const chargeTotal = useMemo(
+    () => chargeRows.reduce((sum, row) => sum + row.value, 0),
+    [chargeRows]
+  );
 
   const [formData, setFormData] = useState({
     name: name || "Empty",
@@ -194,9 +245,9 @@ export default function ProfileDetailsCard({
     const { error: memberError } = await supabase
       .from("members")
       .update({
-        name: trimmedName,
-        mobile_number: trimmedMobile || null,
-        nid_number: trimmedNid || null,
+        full_name: trimmedName,
+        phone: trimmedMobile || null,
+        nid: trimmedNid || null,
       })
       .eq("id", memberId);
 
@@ -246,6 +297,38 @@ export default function ProfileDetailsCard({
     setIsEditing(false);
     setMessage(finalMessage);
     window.location.reload();
+  }
+
+  async function handleChangePassword() {
+    setPasswordMessage("");
+
+    if (newPassword.length < 6) {
+      setPasswordMessage("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Passwords do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    setPasswordSaving(false);
+
+    if (error) {
+      // Old sessions may need a fresh login before Supabase allows this.
+      setPasswordMessage(error.message);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMessage("Password changed successfully.");
   }
 
   return (
@@ -366,16 +449,95 @@ export default function ProfileDetailsCard({
 
         <InfoItem label="Mess / Group" value={groupName || "Not available"} />
 
-        <InfoItem
-          label="Monthly Rent"
-          value={
-            typeof monthlyRent === "number"
-              ? `৳ ${monthlyRent.toFixed(0)}`
-              : "Not set"
-          }
-        />
-
         <InfoItem label="Account Status" value="Active" />
+      </div>
+
+      <div className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-bold text-slate-900">
+            My Monthly Charges
+          </h3>
+          <span className="text-xs font-medium text-slate-500">
+            {currentOpenMonthText} · Set by admin
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {chargeRows.map((row) => (
+            <div
+              key={row.key}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {row.label}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                ৳ {row.value.toFixed(0)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
+          <p className="text-sm font-semibold text-teal-800">Total Charges</p>
+          <p className="text-base font-bold text-teal-900">
+            ৳ {chargeTotal.toFixed(0)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 border-t border-slate-200 pt-6">
+        <h3 className="text-base font-bold text-slate-900">Change Password</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Set a new password for your account. No old password required.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              New Password
+            </p>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={passwordSaving}
+              placeholder="Enter new password"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Confirm Password
+            </p>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={passwordSaving}
+              placeholder="Re-enter new password"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleChangePassword}
+            disabled={passwordSaving}
+            className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {passwordSaving ? "Updating..." : "Update Password"}
+          </button>
+
+          {passwordMessage ? (
+            <span className="text-sm font-medium text-slate-600">
+              {passwordMessage}
+            </span>
+          ) : null}
+        </div>
       </div>
     </section>
   );

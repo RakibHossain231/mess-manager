@@ -3,13 +3,26 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { buildClosedMonthReportData } from "@/lib/report-snapshot";
+import { buildSettlementRows } from "@/lib/report-snapshot";
 
 type Member = {
   id: string;
-  name: string;
-  role?: "admin" | "manager" | "member";
-  monthly_rent: number;
+  full_name: string;
+};
+
+type Charge = {
+  member_id: string;
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+  discount: number;
+  advance: number;
+  previous_due: number;
 };
 
 export default function MonthActions({
@@ -19,8 +32,8 @@ export default function MonthActions({
   members,
 }: {
   groupId: string;
-  currentMonthId: string | null;
-  currentMonthLabel: string | null;
+  currentMonthId: string |null;
+  currentMonthLabel: string |null;
   members: Member[];
 }) {
   const router = useRouter();
@@ -32,7 +45,7 @@ export default function MonthActions({
   const [reviewChecked, setReviewChecked] = useState(false);
   const [forceClose, setForceClose] = useState(false);
 
-  const todayDate = useMemo(() => new Date(), []);
+  const todayDate = useMemo(() => new Date(),[]);
   const dayOfMonth = todayDate.getDate();
   const normalCloseAllowed = dayOfMonth >= 25;
 
@@ -72,10 +85,9 @@ export default function MonthActions({
     }
 
     setLoading(true);
-
     const nextMonthInfo = getNextMonthInfo(currentMonthLabel);
 
-    const { data: existingNextMonth } = await supabase
+    const { data: existingNextMonth, error: existingMonthError } = await supabase
       .from("months")
       .select("id, status")
       .eq("group_id", groupId)
@@ -83,66 +95,79 @@ export default function MonthActions({
       .limit(1)
       .maybeSingle();
 
+    if (existingMonthError) {
+      setLoading(false);
+      setMsg(existingMonthError.message);
+      return;
+    }
+
     if (existingNextMonth) {
       setLoading(false);
       setMsg(`Next month (${nextMonthInfo.label}) already exists.`);
       return;
     }
 
-    const { data: mealsData, error: mealsError } = await supabase
-      .from("meal_entries")
-      .select("member_id, own_meal, guest_meal")
-      .eq("month_id", currentMonthId);
+    const [{ data: mealsData, error: mealsError }, { data: expensesData, error: expensesError }, { data: chargesData, error: chargesError }] =
+      await Promise.all([
+        supabase
+          .from("meal_entries")
+          .select("member_id, own_meal, guest_meal")
+          .eq("month_id", currentMonthId),
+        supabase
+          .from("expense_entries")
+          .select("expense_type, amount, paid_by_member_id")
+          .eq("month_id", currentMonthId),
+        supabase
+          .from("member_monthly_charges")
+          .select(
+            "member_id, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due"
+          )
+          .eq("month_id", currentMonthId),
+      ]);
 
-    if (mealsError) {
+    if (mealsError || expensesError || chargesError) {
       setLoading(false);
-      setMsg(mealsError.message);
+      setMsg(
+        mealsError?.message || expensesError?.message || chargesError?.message ||
+          "Failed to load current month data."
+      );
       return;
     }
 
-    const { data: expensesData, error: expensesError } = await supabase
-      .from("expense_entries")
-      .select("category, amount, paid_by_member_id")
-      .eq("month_id", currentMonthId);
+    const charges: Charge[] = (chargesData ?? []).map((charge) => ({
+      member_id: charge.member_id,
+      rent: Number(charge.rent || 0),
+      wifi: Number(charge.wifi || 0),
+      electricity: Number(charge.electricity || 0),
+      water: Number(charge.water || 0),
+      gas: Number(charge.gas || 0),
+      khala_bill: Number(charge.khala_bill || 0),
+      utility: Number(charge.utility || 0),
+      others: Number(charge.others || 0),
+      discount: Number(charge.discount || 0),
+      advance: Number(charge.advance || 0),
+      previous_due: Number(charge.previous_due || 0),
+    }));
 
-    if (expensesError) {
-      setLoading(false);
-      setMsg(expensesError.message);
-      return;
-    }
-
-    const { data: chargesData, error: chargesFetchError } = await supabase
-      .from("member_monthly_charges")
-      .select("member_id, rent_amount")
-      .eq("month_id", currentMonthId);
-
-    if (chargesFetchError) {
-      setLoading(false);
-      setMsg(chargesFetchError.message);
-      return;
-    }
-
-    const reportData = buildClosedMonthReportData({
+    const settlementRows = buildSettlementRows({
+      groupId,
+      monthId: currentMonthId,
       members,
       meals: mealsData ?? [],
       expenses: expensesData ?? [],
-      charges: chargesData ?? [],
+      charges,
     });
 
-    const { error: snapshotError } = await supabase.from("closed_month_reports").upsert(
-      {
-        group_id: groupId,
-        month_id: currentMonthId,
-        month_label: currentMonthLabel,
-        report_data: reportData,
-      },
-      { onConflict: "group_id,month_id" }
-    );
+    if (settlementRows.length > 0) {
+      const { error: settlementError } = await supabase
+        .from("settlements")
+        .insert(settlementRows);
 
-    if (snapshotError) {
-      setLoading(false);
-      setMsg(snapshotError.message);
-      return;
+      if (settlementError) {
+        setLoading(false);
+        setMsg(settlementError.message);
+        return;
+      }
     }
 
     const { error: closeError } = await supabase
@@ -151,7 +176,8 @@ export default function MonthActions({
         status: "closed",
         closed_at: new Date().toISOString(),
       })
-      .eq("id", currentMonthId);
+      .eq("id", currentMonthId)
+      .eq("status", "open");
 
     if (closeError) {
       setLoading(false);
@@ -177,20 +203,30 @@ export default function MonthActions({
       return;
     }
 
-    if (members.length > 0) {
-      const chargesPayload = members.map((member) => ({
+    if (charges.length > 0) {
+      const chargesPayload = charges.map((charge) => ({
         month_id: newMonth.id,
-        member_id: member.id,
-        rent_amount: Number(member.monthly_rent || 0),
+        member_id: charge.member_id,
+        rent: charge.rent,
+        wifi: charge.wifi,
+        electricity: charge.electricity,
+        water: charge.water,
+        gas: charge.gas,
+        khala_bill: charge.khala_bill,
+        utility: charge.utility,
+        others: charge.others,
+        discount: 0,
+        advance: 0,
+        previous_due: 0,
       }));
 
-      const { error: chargesError } = await supabase
+      const { error: chargesInsertError } = await supabase
         .from("member_monthly_charges")
         .insert(chargesPayload);
 
-      if (chargesError) {
+      if (chargesInsertError) {
         setLoading(false);
-        setMsg(chargesError.message);
+        setMsg(chargesInsertError.message);
         return;
       }
     }
@@ -225,7 +261,7 @@ export default function MonthActions({
         <p className="text-sm text-amber-700">
           Normal month close is allowed after 25th. Before that, force close is required.
         </p>
-      ) : null}
+      ) :null}
 
       {showConfirm ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
@@ -233,7 +269,7 @@ export default function MonthActions({
 
           <div className="mt-3 space-y-3 text-sm text-slate-700">
             <p>
-              This will close the current month, save a frozen report snapshot, and
+              This will close the current month, save frozen settlement rows, and
               create the next month automatically.
             </p>
 
@@ -259,7 +295,7 @@ export default function MonthActions({
                   Force close this month before 25th. I understand this is an early close.
                 </span>
               </label>
-            ) : null}
+            ) :null}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
@@ -279,9 +315,9 @@ export default function MonthActions({
             </button>
           </div>
         </div>
-      ) : null}
+      ) :null}
 
-      {msg ? <p className="text-sm text-slate-700">{msg}</p> : null}
+      {msg ? <p className="text-sm text-slate-700">{msg}</p> :null}
     </div>
   );
 }

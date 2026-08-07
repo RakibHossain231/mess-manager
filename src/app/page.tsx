@@ -17,8 +17,7 @@ import { getUserGroupContext } from "@/lib/group-access";
 
 type Member = {
   id: string;
-  name: string;
-  monthly_rent: number;
+  full_name: string;
 };
 
 type Month = {
@@ -33,9 +32,10 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
-  category: string;
+  expense_type: string;
+  title: string;
   amount: number;
-  paid_by_member_id: string;
+  paid_by_member_id: string | null;
 };
 
 export default async function HomePage() {
@@ -55,15 +55,16 @@ export default async function HomePage() {
     redirect("/join");
   }
 
-  const isAdmin = member.role === "admin";
+  const isAdmin =
+    member.role === "owner" || member.role === "admin";
   const isPrivileged = isAdmin;
   const canManageMonth = isAdmin;
 
   const { data: membersData } = await supabase
     .from("members")
-    .select("id, name, monthly_rent")
+    .select("id, full_name")
     .eq("group_id", group.id)
-    .eq("is_active", true)
+    .eq("status", "active")
     .order("created_at", { ascending: true });
 
   const { data: currentMonth } = await supabase
@@ -90,7 +91,7 @@ export default async function HomePage() {
 
     const { data: expensesData } = await supabase
       .from("expense_entries")
-      .select("category, amount, paid_by_member_id")
+      .select("expense_type, title, amount, paid_by_member_id")
       .eq("month_id", month.id);
 
     expenseEntries = expensesData ?? [];
@@ -105,37 +106,27 @@ export default async function HomePage() {
   );
 
   const totalBazar = expenseEntries
-    .filter((item) => item.category === "bazar")
+    .filter((item) => item.expense_type === "bazar")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalSharedBills = expenseEntries
-    .filter((item) => item.category !== "bazar")
+    .filter((item) => item.expense_type === "shared")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
   const perMemberSharedCost =
     totalMembers > 0 ? totalSharedBills / totalMembers : 0;
 
-  const sharedBillLabelMap: Record<string, string> = {
-    wifi: "WiFi",
-    utility: "Lift Bill",
-    electricity: "Electricity",
-    gas: "Gas",
-    bua: "Bua",
-    moyla: "Molya",
-    pani: "Pani"
-  };
-
   const activeSharedBillNames = Array.from(
     new Set(
       expenseEntries
         .filter(
           (item) =>
-            item.category !== "bazar" &&
+            item.expense_type === "shared" &&
             Number(item.amount || 0) > 0 &&
-            sharedBillLabelMap[item.category]
+            item.title
         )
-        .map((item) => sharedBillLabelMap[item.category])
+        .map((item) => item.title)
     )
   );
 
@@ -164,7 +155,7 @@ export default async function HomePage() {
     const bazarPaid = expenseEntries
       .filter(
         (item) =>
-          item.category === "bazar" &&
+          item.expense_type === "bazar" &&
           item.paid_by_member_id === memberItem.id
       )
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -175,7 +166,7 @@ export default async function HomePage() {
 
     return {
       id: memberItem.id,
-      name: memberItem.name,
+      name: memberItem.full_name,
       ownMeal,
       guestMeal,
       totalMeal,
@@ -199,10 +190,7 @@ export default async function HomePage() {
                   groupId={group.id}
                   currentMonthId={month?.id ?? null}
                   currentMonthLabel={month?.label ?? null}
-                  members={members.map((item) => ({
-                    id: item.id,
-                    monthly_rent: Number(item.monthly_rent || 0),
-                  }))}
+                  members={members}
                 />
               ) : null
             }

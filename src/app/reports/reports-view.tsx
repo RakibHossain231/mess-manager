@@ -1,12 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import type { Role } from "@/types";
 
 type Member = {
   id: string;
-  name: string;
-  role: "admin" | "manager" | "member";
-  monthly_rent: number;
+  full_name: string;
 };
 
 type MealEntry = {
@@ -16,20 +15,32 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
-  category: string;
+  expense_type: string;
   amount: number;
-  paid_by_member_id: string;
+  paid_by_member_id: string | null;
 };
 
+// One row per member in member_monthly_charges (the snapshot keeps these at
+// month-close time so closed months never change).
 type ChargeRow = {
   member_id: string;
-  rent_amount: number;
+  rent: number;
+  wifi: number;
+  electricity: number;
+  water: number;
+  gas: number;
+  khala_bill: number;
+  utility: number;
+  others: number;
+  advance: number;
+  discount: number;
+  previous_due: number;
 };
 
 type MonthRow = {
   id: string;
   label: string;
-  status: "open" | "closed";
+  status: "open" | "closed" | "archived";
   created_at?: string;
 };
 
@@ -40,14 +51,26 @@ type SettlementRow = {
   paid_amount: number;
 };
 
-const sharedStatusCategories = [
+const chargeCategories = [
+  { key: "rent", label: "House Rent" },
   { key: "wifi", label: "WiFi" },
   { key: "utility", label: "Utility" },
   { key: "electricity", label: "Current Bill" },
   { key: "gas", label: "Gas Bill" },
-  { key: "bua", label: "Bua Bill" },
-  { key: "moyla", label: "Moyla Bill" },
-  { key: "pani", label: "Pani Bill" },
+  { key: "water", label: "Pani Bill" },
+  { key: "khala_bill", label: "Khala Bill" },
+  { key: "others", label: "Others" },
+] as const;
+
+const CHARGE_FIELDS = [
+  "rent",
+  "wifi",
+  "utility",
+  "electricity",
+  "gas",
+  "water",
+  "khala_bill",
+  "others",
 ] as const;
 
 export default function ReportsView({
@@ -68,14 +91,14 @@ export default function ReportsView({
   messName: string;
   monthLabel: string;
   selectedMonthId: string;
-  selectedMonthStatus: "open" | "closed";
+  selectedMonthStatus: "open" | "closed" | "archived";
   months: MonthRow[];
   members: Member[];
   meals: MealEntry[];
   expenses: ExpenseEntry[];
   charges: ChargeRow[];
   settlements: SettlementRow[];
-  viewerRole: "admin" | "manager" | "member";
+  viewerRole: Role;
   viewerMemberId: string;
   canExport: boolean;
 }) {
@@ -83,7 +106,7 @@ export default function ReportsView({
   const searchParams = useSearchParams();
 
   const isMemberView = viewerRole === "member";
-  const isClosedMonth = selectedMonthStatus === "closed";
+  const isClosedMonth = selectedMonthStatus !== "open";
 
   const totalMeals = meals.reduce(
     (sum, item) => sum + Number(item.own_meal || 0) + Number(item.guest_meal || 0),
@@ -91,20 +114,18 @@ export default function ReportsView({
   );
 
   const totalBazar = expenses
-    .filter((item) => item.category === "bazar")
+    .filter((item) => item.expense_type === "bazar")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalSharedBills = expenses
-    .filter((item) => item.category !== "bazar")
+    .filter((item) => item.expense_type === "shared")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
   const perMemberSharedCost =
     members.length > 0 ? totalSharedBills / members.length : 0;
 
-  const chargeMap = new Map(
-    charges.map((item) => [item.member_id, Number(item.rent_amount || 0)])
-  );
+  const chargeMap = new Map(charges.map((item) => [item.member_id, item]));
 
   const settlementMap = new Map(
     settlements.map((item) => [
@@ -117,15 +138,16 @@ export default function ReportsView({
     ])
   );
 
-  const expenseMap = new Map<string, number>();
-  expenses
-    .filter((item) => item.category !== "bazar")
-    .forEach((item) => {
-      expenseMap.set(
-        item.category,
-        (expenseMap.get(item.category) ?? 0) + Number(item.amount || 0)
+  // Total per charge field across all members, for the shared-bills status table.
+  const chargeFieldMap = new Map<string, number>();
+  charges.forEach((item) => {
+    CHARGE_FIELDS.forEach((key) => {
+      chargeFieldMap.set(
+        key,
+        (chargeFieldMap.get(key) ?? 0) + Number(item[key] || 0)
       );
     });
+  });
 
   const rows = members.map((member) => {
     const memberMeals = meals.filter((item) => item.member_id === member.id);
@@ -144,17 +166,38 @@ export default function ReportsView({
 
     const bazarPaid = expenses
       .filter(
-        (item) => item.category === "bazar" && item.paid_by_member_id === member.id
+        (item) =>
+          item.expense_type === "bazar" && item.paid_by_member_id === member.id
       )
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-    const chargeRent = Number(chargeMap.get(member.id) ?? 0);
-    const fallbackRent = Number(member.monthly_rent ?? 0);
-    const rent = chargeRent > 0 ? chargeRent : fallbackRent;
+    const chargeRow = chargeMap.get(member.id);
+
+    const rent = chargeRow ? Number(chargeRow.rent || 0) : 0;
+
+    const otherCharges = chargeRow
+      ? Number(chargeRow.wifi || 0) +
+        Number(chargeRow.electricity || 0) +
+        Number(chargeRow.water || 0) +
+        Number(chargeRow.gas || 0) +
+        Number(chargeRow.khala_bill || 0) +
+        Number(chargeRow.utility || 0) +
+        Number(chargeRow.others || 0)
+      : 0;
+
+    // Reference formula: Meal Cost + rent + wifi + electricity + gas + water +
+    // khala + utility + others - advance - discount + previous_due
+    const chargesTotal = chargeRow
+      ? rent +
+        otherCharges -
+        Number(chargeRow.discount || 0) -
+        Number(chargeRow.advance || 0) +
+        Number(chargeRow.previous_due || 0)
+      : 0;
 
     const mealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const rawFinalBalance = bazarPaid - mealCost - sharedShare - rent;
+    const rawFinalBalance = bazarPaid - mealCost - sharedShare - chargesTotal;
 
     const computedFinalType: "pay" | "receive" =
       rawFinalBalance >= 0 ? "receive" : "pay";
@@ -193,12 +236,14 @@ export default function ReportsView({
 
     return {
       id: member.id,
-      name: member.name,
+      name: member.full_name,
       ownMeal,
       guestMeal,
       totalMeal,
       bazarPaid,
       rent,
+      otherCharges,
+      chargesTotal,
       mealCost,
       sharedShare,
       rawFinalBalance,
@@ -213,6 +258,11 @@ export default function ReportsView({
 
   const totalRent = rows.reduce((sum, row) => sum + Number(row.rent || 0), 0);
 
+  const totalFixedCharges = rows.reduce(
+    (sum, row) => sum + Number(row.chargesTotal || 0),
+    0
+  );
+
   const totalWillReceive = rows
     .filter((row) => row.rawFinalBalance > 0)
     .reduce((sum, row) => sum + row.rawFinalBalance, 0);
@@ -221,7 +271,7 @@ export default function ReportsView({
     .filter((row) => row.rawFinalBalance < 0)
     .reduce((sum, row) => sum + Math.abs(row.rawFinalBalance), 0);
 
-  const totalCharges = totalSharedBills + totalRent + totalWillReceive;
+  const totalCharges = totalSharedBills + totalFixedCharges + totalWillReceive;
   const balanceDifference = Math.abs(totalCharges - totalWillPay);
   const isBalanced = balanceDifference < 0.01;
 
@@ -237,6 +287,8 @@ export default function ReportsView({
       totalMeal: 0,
       bazarPaid: 0,
       rent: 0,
+      otherCharges: 0,
+      chargesTotal: 0,
       mealCost: 0,
       sharedShare: perMemberSharedCost,
       rawFinalBalance: 0,
@@ -281,7 +333,12 @@ export default function ReportsView({
             >
               {months.map((month) => (
                 <option key={month.id} value={month.id}>
-                  {month.label} {month.status === "open" ? "(Open)" : "(Closed)"}
+                  {month.label}{" "}
+                  {month.status === "open"
+                    ? "(Open)"
+                    : month.status === "archived"
+                    ? "(Archived)"
+                    : "(Closed)"}
                 </option>
               ))}
             </select>
@@ -385,9 +442,9 @@ export default function ReportsView({
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Rent</p>
+                <p className="text-sm text-slate-500">All Charges</p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900">
-                  ৳ {myRow.rent.toFixed(2)}
+                  ৳ {myRow.chargesTotal.toFixed(2)}
                 </h3>
               </div>
 
@@ -406,9 +463,9 @@ export default function ReportsView({
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Shared Bills Status</h2>
+              <h2 className="text-xl font-bold text-slate-900">Charges Status</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Shared bill categories added for this month.
+                Charge categories for this month.
               </p>
             </div>
 
@@ -422,9 +479,9 @@ export default function ReportsView({
                   </tr>
                 </thead>
                 <tbody>
-                  {sharedStatusCategories.map((item) => {
-                    const amount = Number(expenseMap.get(item.key) ?? 0);
-                    const added = expenseMap.has(item.key);
+                  {chargeCategories.map((item) => {
+                    const amount = Number(chargeFieldMap.get(item.key) ?? 0);
+                    const added = amount > 0;
 
                     return (
                       <tr key={item.key} className="bg-slate-50 text-sm text-slate-700">
@@ -448,6 +505,25 @@ export default function ReportsView({
                       </tr>
                     );
                   })}
+                  <tr className="bg-slate-50 text-sm text-slate-700">
+                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                      Shared Expense
+                    </td>
+                    <td className="px-3 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          totalSharedBills > 0
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {totalSharedBills > 0 ? "Added" : "Not Added"}
+                      </span>
+                    </td>
+                    <td className="rounded-r-2xl px-3 py-4">
+                      ৳ {totalSharedBills.toFixed(0)}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -500,7 +576,7 @@ export default function ReportsView({
                   ৳ {totalCharges.toFixed(2)}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Shared Bills + Rent + Total Will Receive
+                  Shared Bills + Charges + Total Will Receive
                 </p>
               </div>
 
@@ -540,18 +616,18 @@ export default function ReportsView({
               {!isBalanced ? (
                 <p className="mt-1 text-xs text-red-600">
                   Difference: ৳ {balanceDifference.toFixed(2)}. Meal, bazar, shared bill,
-                  or rent data check koro.
+                  or charges data check koro.
                 </p>
               ) : null}
             </div>
           </section>
-          
+
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm print:shadow-none">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Final Settlement</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Final balance = Bazar Paid - Meal Cost - Shared Bill - Rent
+                  Final balance = Bazar Paid - (Meal Cost + Shared Bill + House Rent + Other Charges)
                 </p>
               </div>
 
@@ -583,6 +659,7 @@ export default function ReportsView({
                     <th className="px-3 py-2 font-medium">Bazar Paid</th>
                     <th className="px-3 py-2 font-medium">Shared Bill</th>
                     <th className="px-3 py-2 font-medium">House Rent</th>
+                    <th className="px-3 py-2 font-medium">Other Charges</th>
                     <th className="px-3 py-2 font-medium">Final</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                   </tr>
@@ -604,6 +681,7 @@ export default function ReportsView({
                       <td className="px-3 py-4">৳ {row.bazarPaid.toFixed(0)}</td>
                       <td className="px-3 py-4">৳ {row.sharedShare.toFixed(2)}</td>
                       <td className="px-3 py-4">৳ {row.rent.toFixed(0)}</td>
+                      <td className="px-3 py-4">৳ {row.otherCharges.toFixed(0)}</td>
                       <td className="px-3 py-4 font-semibold">
                         ৳ {Math.abs(row.rawFinalBalance).toFixed(2)}
                       </td>
@@ -625,10 +703,10 @@ export default function ReportsView({
             </div>
           </div>
 
-          
+
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Shared Bills Status</h2>
+              <h2 className="text-xl font-bold text-slate-900">Charges Status</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Missing categories are shown as not added and treated as 0 in this report.
               </p>
@@ -644,9 +722,9 @@ export default function ReportsView({
                   </tr>
                 </thead>
                 <tbody>
-                  {sharedStatusCategories.map((item) => {
-                    const amount = Number(expenseMap.get(item.key) ?? 0);
-                    const added = expenseMap.has(item.key);
+                  {chargeCategories.map((item) => {
+                    const amount = Number(chargeFieldMap.get(item.key) ?? 0);
+                    const added = amount > 0;
 
                     return (
                       <tr key={item.key} className="bg-slate-50 text-sm text-slate-700">
@@ -668,6 +746,25 @@ export default function ReportsView({
                       </tr>
                     );
                   })}
+                  <tr className="bg-slate-50 text-sm text-slate-700">
+                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                      Shared Expense
+                    </td>
+                    <td className="px-3 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          totalSharedBills > 0
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {totalSharedBills > 0 ? "Added" : "Not Added"}
+                      </span>
+                    </td>
+                    <td className="rounded-r-2xl px-3 py-4">
+                      ৳ {totalSharedBills.toFixed(0)}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
