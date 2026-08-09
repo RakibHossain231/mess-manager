@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
   const redirectTo =
     typeof window !== "undefined"
-      ? `${window.location.origin}/reset-password`
+      ? `${window.location.origin}/auth/confirm?next=/reset-password`
       : undefined;
 
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {

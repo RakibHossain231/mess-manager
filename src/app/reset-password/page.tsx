@@ -25,6 +25,19 @@ function ResetPasswordContent() {
       setChecking(true);
       setErrorText("");
 
+      // A server-side error forwarded from /auth/confirm.
+      const linkError = searchParams.get("error");
+      if (linkError) {
+        if (!mounted) return;
+        setReady(false);
+        setChecking(false);
+        setErrorText(linkError);
+        return;
+      }
+
+      // The recovery session is normally established server-side by
+      // /auth/confirm before we land here. As a fallback, if the link
+      // still carries a raw `code`, exchange it directly.
       const code = searchParams.get("code");
 
       if (code) {
