@@ -51,6 +51,30 @@ type SettlementRow = {
   paid_amount: number;
 };
 
+type BazarItem = {
+  id: string;
+  expense_date: string | null;
+  title: string | null;
+  description: string | null;
+  amount: number;
+  paid_by_member_id: string | null;
+};
+
+type MonthlyTotal = {
+  monthId: string;
+  label: string;
+  totalMeals: number;
+  totalBazar: number;
+  mealRate: number;
+};
+
+type DailyMeal = {
+  member_id: string;
+  meal_date: string | null;
+  own_meal: number;
+  guest_meal: number;
+};
+
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -164,6 +188,91 @@ export default async function ReportsPage({
     charges = (chargesData ?? []) as ChargeRow[];
   }
 
+  // All member names for the group (used to label the itemized bazar list,
+  // including members who have since left).
+  const { data: allMembersData } = await supabase
+    .from("members")
+    .select("id, full_name")
+    .eq("group_id", group.id);
+
+  const memberNames: Record<string, string> = Object.fromEntries(
+    (allMembersData ?? []).map((item) => [item.id, item.full_name])
+  );
+
+  // Itemized bazar list for the selected month. Read straight from
+  // expense_entries so we keep the per-purchase detail (date / item / who)
+  // that the frozen settlement snapshot collapses into a single total.
+  const { data: bazarItemsData } = await supabase
+    .from("expense_entries")
+    .select("id, expense_date, title, description, amount, paid_by_member_id")
+    .eq("month_id", selectedMonth.id)
+    .eq("expense_type", "bazar")
+    .order("expense_date", { ascending: true });
+
+  const bazarItems: BazarItem[] = (bazarItemsData ?? []) as BazarItem[];
+
+  // Per-day meal entries for the selected month, used to build the day-by-day
+  // meal grid (one "Meal" row per member = own + guest meals that day).
+  const { data: dailyMealsData } = await supabase
+    .from("meal_entries")
+    .select("member_id, meal_date, own_meal, guest_meal")
+    .eq("month_id", selectedMonth.id);
+
+  const dailyMeals: DailyMeal[] = (dailyMealsData ?? []) as DailyMeal[];
+
+  // How many day-columns the grid should show. Derive the real length of the
+  // selected month from any meal date; fall back to 31 when there is no data.
+  const sampleDate = dailyMeals.find((item) => item.meal_date)?.meal_date;
+  let daysInMonth = 31;
+  if (sampleDate) {
+    const [y, m] = sampleDate.slice(0, 10).split("-").map(Number);
+    if (y && m) daysInMonth = new Date(y, m, 0).getDate();
+  }
+
+  // Cost-per-meal trend: aggregate frozen settlement rows per closed month.
+  const { data: trendData } = await supabase
+    .from("settlements")
+    .select("month_id, total_meal, meal_rate, bazar_paid")
+    .eq("group_id", group.id);
+
+  const trendAgg = new Map<
+    string,
+    { meals: number; bazar: number; rate: number }
+  >();
+
+  (trendData ?? []).forEach((item) => {
+    const current = trendAgg.get(item.month_id) ?? {
+      meals: 0,
+      bazar: 0,
+      rate: 0,
+    };
+    current.meals += Number(item.total_meal || 0);
+    current.bazar += Number(item.bazar_paid || 0);
+    current.rate = Number(item.meal_rate || 0) || current.rate;
+    trendAgg.set(item.month_id, current);
+  });
+
+  // months is ordered created_at desc; reverse it so the trend reads oldest -> newest.
+  const monthlyTotals: MonthlyTotal[] = [...months]
+    .reverse()
+    .filter((month) => trendAgg.has(month.id))
+    .map((month) => {
+      const agg = trendAgg.get(month.id)!;
+      return {
+        monthId: month.id,
+        label: month.label,
+        totalMeals: agg.meals,
+        totalBazar: agg.bazar,
+        mealRate: agg.rate,
+      };
+    });
+
+  const generatedAt = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
   return (
     <AppShell>
       <ReportsView
@@ -177,6 +286,12 @@ export default async function ReportsPage({
         expenses={expenses}
         charges={charges}
         settlements={settlements}
+        bazarItems={bazarItems}
+        memberNames={memberNames}
+        monthlyTotals={monthlyTotals}
+        dailyMeals={dailyMeals}
+        daysInMonth={daysInMonth}
+        generatedAt={generatedAt}
         viewerRole={member.role}
         viewerMemberId={member.id}
         canExport={member.role === "owner" || member.role === "admin"}

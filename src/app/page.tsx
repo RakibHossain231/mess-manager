@@ -29,6 +29,7 @@ type MealEntry = {
   member_id: string;
   own_meal: number;
   guest_meal: number;
+  meal_date: string | null;
 };
 
 type ExpenseEntry = {
@@ -36,6 +37,19 @@ type ExpenseEntry = {
   title: string;
   amount: number;
   paid_by_member_id: string | null;
+};
+
+// Meal grid cell: blank for 0, integer when whole, else one decimal.
+const cellMeal = (value: number) => {
+  const n = Number(value) || 0;
+  if (n === 0) return "";
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+};
+
+// Total meals: integer when whole, else one decimal.
+const totalMealFmt = (value: number) => {
+  const n = Number(value) || 0;
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
 };
 
 export default async function HomePage() {
@@ -84,7 +98,7 @@ export default async function HomePage() {
   if (month) {
     const { data: mealsData } = await supabase
       .from("meal_entries")
-      .select("member_id, own_meal, guest_meal")
+      .select("member_id, own_meal, guest_meal, meal_date")
       .eq("month_id", month.id);
 
     mealEntries = mealsData ?? [];
@@ -176,6 +190,41 @@ export default async function HomePage() {
       estimatedBalance,
     };
   });
+
+  // Day-by-day meal grid: one "Meal" row per member = own + guest meals that
+  // day. Derive the month length from any meal date; fall back to 31.
+  const sampleDate = mealEntries.find((item) => item.meal_date)?.meal_date;
+  let daysInMonth = 31;
+  if (sampleDate) {
+    const [y, m] = sampleDate.slice(0, 10).split("-").map(Number);
+    if (y && m) daysInMonth = new Date(y, m, 0).getDate();
+  }
+  const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const mealGridMap = new Map<string, Map<number, number>>();
+  mealEntries.forEach((entry) => {
+    if (!entry.meal_date) return;
+    const day = Number(entry.meal_date.slice(8, 10));
+    if (!day) return;
+    const value = Number(entry.own_meal || 0) + Number(entry.guest_meal || 0);
+    if (!mealGridMap.has(entry.member_id)) {
+      mealGridMap.set(entry.member_id, new Map());
+    }
+    const perDay = mealGridMap.get(entry.member_id)!;
+    perDay.set(day, (perDay.get(day) ?? 0) + value);
+  });
+
+  const mealGridRows = members.map((memberItem) => {
+    const perDay = mealGridMap.get(memberItem.id) ?? new Map<number, number>();
+    const dayValues = dayNumbers.map((day) => perDay.get(day) ?? 0);
+    const rowTotal = dayValues.reduce((sum, value) => sum + value, 0);
+    return { id: memberItem.id, name: memberItem.full_name, dayValues, rowTotal };
+  });
+
+  const mealGridGrandTotal = mealGridRows.reduce(
+    (sum, row) => sum + row.rowTotal,
+    0
+  );
 
   return (
     <AppShell>
@@ -320,6 +369,100 @@ export default async function HomePage() {
             </table>
           </div>
         </section>
+
+        {/* Meal Summary — SS-1 style day-by-day grid, one "Meal" row per member. */}
+        {month && members.length > 0 ? (
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Meal Summary
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Day-by-day meals per member for {month.label} (own + guest).
+                </p>
+              </div>
+              <p className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-700">
+                Grand Total Meals: {totalMealFmt(mealGridGrandTotal)}
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600">
+                    <th className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold">
+                      Member
+                    </th>
+                    <th className="border border-slate-200 px-1.5 py-1.5 font-semibold">
+                      Type
+                    </th>
+                    <th className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold">
+                      Total
+                    </th>
+                    {dayNumbers.map((day) => (
+                      <th
+                        key={day}
+                        className="border border-slate-200 px-1 py-1.5 text-center font-semibold"
+                      >
+                        {day}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {mealGridRows.map((row) => (
+                    <tr key={row.id} className="text-slate-700">
+                      <td className="sticky left-0 z-10 whitespace-nowrap border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-900">
+                        {row.name}
+                      </td>
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-center text-slate-500">
+                        Meal
+                      </td>
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold text-slate-900">
+                        {totalMealFmt(row.rowTotal)}
+                      </td>
+                      {row.dayValues.map((value, index) => (
+                        <td
+                          key={index}
+                          className="border border-slate-200 px-1 py-1.5 text-center"
+                        >
+                          {cellMeal(value)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 font-bold text-slate-900">
+                    <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5">
+                      Grand Total
+                    </td>
+                    <td className="border border-slate-200 px-1.5 py-1.5" />
+                    <td className="border border-slate-200 px-1.5 py-1.5 text-right">
+                      {totalMealFmt(mealGridGrandTotal)}
+                    </td>
+                    {dayNumbers.map((day, index) => {
+                      const dayTotal = mealGridRows.reduce(
+                        (sum, row) => sum + row.dayValues[index],
+                        0
+                      );
+                      return (
+                        <td
+                          key={day}
+                          className="border border-slate-200 px-1 py-1.5 text-center"
+                        >
+                          {cellMeal(dayTotal)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
       </div>
     </AppShell>
   );

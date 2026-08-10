@@ -30,6 +30,8 @@ button {
 @media print {
   body {
     background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   aside,
@@ -40,5 +42,26 @@ button {
 
   main {
     padding: 0 !important;
+  }
+
+  /* Force background colors (badges, header bar, chart bars) to render in the
+     printed PDF — browsers strip them by default. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Start this block on a fresh page. */
+  .report-break-before {
+    break-before: page;
+  }
+
+  /* Keep a card/section from being split across two pages. */
+  .report-avoid-break {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 12mm;
   }
 }
