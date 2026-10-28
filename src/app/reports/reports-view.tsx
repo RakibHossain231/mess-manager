@@ -324,7 +324,6 @@ export default function ReportsView({
   expenses,
   charges,
   settlements,
-  bazarItems,
   memberNames,
   monthlyTotals,
   dailyMeals,
@@ -344,7 +343,6 @@ export default function ReportsView({
   expenses: ExpenseEntry[];
   charges: ChargeRow[];
   settlements: SettlementRow[];
-  bazarItems: BazarItem[];
   memberNames: Record<string, string>;
   monthlyTotals: MonthlyTotal[];
   dailyMeals: DailyMeal[];
@@ -569,11 +567,6 @@ export default function ReportsView({
     previousRate && previousRate > 0
       ? ((currentRate - previousRate) / previousRate) * 100
       : null;
-
-  const bazarItemsTotal = bazarItems.reduce(
-    (sum, item) => sum + Number(item.amount || 0),
-    0
-  );
 
   // Day-by-day meal grid: one "Meal" row per member showing that day's total
   // (own + guest) meals, plus a per-member and grand total.
@@ -1321,79 +1314,6 @@ export default function ReportsView({
           </section>
 
           
-
-          {/* Itemized bazar list. */}
-          <section className="report-avoid-break rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">
-                Bazar Details
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Every bazar purchase for {monthLabel}.
-              </p>
-            </div>
-
-            {bazarItems.length === 0 ? (
-              <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                No bazar entries recorded for this month.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-2 py-2 font-semibold">Date</th>
-                      <th className="px-2 py-2 font-semibold">Paid By</th>
-                      <th className="px-2 py-2 font-semibold">Item</th>
-                      <th className="px-2 py-2 text-right font-semibold">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bazarItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-b border-slate-100 text-slate-700"
-                      >
-                        <td className="whitespace-nowrap px-2 py-2.5">
-                          {shortDate(item.expense_date)}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          {item.paid_by_member_id
-                            ? memberNames[item.paid_by_member_id] ?? "Unknown"
-                            : "—"}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <span className="font-medium text-slate-900">
-                            {item.title || "Bazar"}
-                          </span>
-                          {item.description ? (
-                            <span className="block text-xs text-slate-400">
-                              {item.description}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-2.5 text-right">
-                          {money(item.amount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-slate-300 font-bold text-slate-900">
-                      <td className="px-2 py-3" colSpan={3}>
-                        Total Bazar
-                      </td>
-                      <td className="px-2 py-3 text-right">
-                        {money(bazarItemsTotal)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </section>
 
           {/* Charges status. */}
           <section className="report-avoid-break rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">

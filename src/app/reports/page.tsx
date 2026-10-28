@@ -51,15 +51,6 @@ type SettlementRow = {
   paid_amount: number;
 };
 
-type BazarItem = {
-  id: string;
-  expense_date: string | null;
-  title: string | null;
-  description: string | null;
-  amount: number;
-  paid_by_member_id: string | null;
-};
-
 type MonthlyTotal = {
   monthId: string;
   label: string;
@@ -129,12 +120,11 @@ export default async function ReportsPage({
   let expenses: ExpenseEntry[] = [];
   let charges: ChargeRow[] = [];
   let settlements: SettlementRow[] = [];
-  let bazarItems: BazarItem[] = [];
   let dailyMeals: DailyMeal[] = [];
   let memberNames: Record<string, string> = {};
   let trendRows: { month_id: string; total_meal: number; meal_rate: number; bazar_paid: number }[] = [];
 
-  // Common parallel fetches: all members, trend data, itemized bazar, and daily meals
+  // Common parallel fetches: all members, trend data, and daily meals
   const allMembersPromise = supabase
     .from("members")
     .select("id, full_name, status")
@@ -145,13 +135,6 @@ export default async function ReportsPage({
     .from("settlements")
     .select("month_id, total_meal, meal_rate, bazar_paid")
     .eq("group_id", group.id);
-
-  const bazarItemsPromise = supabase
-    .from("expense_entries")
-    .select("id, expense_date, title, description, amount, paid_by_member_id")
-    .eq("month_id", selectedMonth.id)
-    .eq("expense_type", "bazar")
-    .order("expense_date", { ascending: true });
 
   const dailyMealsPromise = supabase
     .from("meal_entries")
@@ -167,11 +150,10 @@ export default async function ReportsPage({
       .eq("group_id", group.id)
       .eq("month_id", selectedMonth.id);
 
-    const [allMembersRes, trendRes, bazarRes, dailyMealsRes, settlementsRes] =
+    const [allMembersRes, trendRes, dailyMealsRes, settlementsRes] =
       await Promise.all([
         allMembersPromise,
         trendPromise,
-        bazarItemsPromise,
         dailyMealsPromise,
         settlementsPromise,
       ]);
@@ -187,7 +169,6 @@ export default async function ReportsPage({
     expenses = props.expenses;
     charges = props.charges;
     settlements = props.settlementRows;
-    bazarItems = (bazarRes.data ?? []) as BazarItem[];
     dailyMeals = (dailyMealsRes.data ?? []) as DailyMeal[];
     trendRows = trendRes.data ?? [];
   } else {
@@ -203,11 +184,10 @@ export default async function ReportsPage({
       )
       .eq("month_id", selectedMonth.id);
 
-    const [allMembersRes, trendRes, bazarRes, dailyMealsRes, expensesRes, chargesRes] =
+    const [allMembersRes, trendRes, dailyMealsRes, expensesRes, chargesRes] =
       await Promise.all([
         allMembersPromise,
         trendPromise,
-        bazarItemsPromise,
         dailyMealsPromise,
         expensesPromise,
         chargesPromise,
@@ -226,7 +206,6 @@ export default async function ReportsPage({
     meals = dailyMeals;
     expenses = (expensesRes.data ?? []) as ExpenseEntry[];
     charges = (chargesRes.data ?? []) as ChargeRow[];
-    bazarItems = (bazarRes.data ?? []) as BazarItem[];
     trendRows = trendRes.data ?? [];
   }
 
@@ -291,7 +270,6 @@ export default async function ReportsPage({
         expenses={expenses}
         charges={charges}
         settlements={settlements}
-        bazarItems={bazarItems}
         memberNames={memberNames}
         monthlyTotals={monthlyTotals}
         dailyMeals={dailyMeals}
