@@ -24,15 +24,14 @@ export default function LoginPage() {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       setErrorText(error.message);
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    // Direct clean navigation ensuring fresh cookies without triggering duplicate router refreshes
+    window.location.href = "/";
   }
 
   return (

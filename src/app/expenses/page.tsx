@@ -37,20 +37,23 @@ export default async function ExpensesPage() {
     redirect("/join");
   }
 
-  const { data: membersData } = await supabase
-    .from("members")
-    .select("id, full_name, role")
-    .eq("group_id", group.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+  const [membersRes, monthRes] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id, full_name, role")
+      .eq("group_id", group.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("months")
+      .select("id")
+      .eq("group_id", group.id)
+      .eq("status", "open")
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const { data: month } = await supabase
-    .from("months")
-    .select("id")
-    .eq("group_id", group.id)
-    .eq("status", "open")
-    .limit(1)
-    .maybeSingle();
+  const month = monthRes.data;
 
   if (!month) {
     return (
@@ -70,7 +73,7 @@ export default async function ExpensesPage() {
     .order("expense_date", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const members: Member[] = membersData ?? [];
+  const members: Member[] = membersRes.data ?? [];
   const expenses: ExpenseItem[] = expenseRows ?? [];
 
   return (

@@ -74,41 +74,42 @@ export default async function HomePage() {
   const isPrivileged = isAdmin;
   const canManageMonth = isAdmin;
 
-  const { data: membersData } = await supabase
-    .from("members")
-    .select("id, full_name")
-    .eq("group_id", group.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+  const [membersRes, currentMonthRes] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id, full_name")
+      .eq("group_id", group.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("months")
+      .select("id, label")
+      .eq("group_id", group.id)
+      .eq("status", "open")
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const { data: currentMonth } = await supabase
-    .from("months")
-    .select("id, label")
-    .eq("group_id", group.id)
-    .eq("status", "open")
-    .limit(1)
-    .maybeSingle();
-
-  const members: Member[] = membersData ?? [];
-  const month: Month | null = currentMonth ?? null;
+  const members: Member[] = membersRes.data ?? [];
+  const month: Month | null = currentMonthRes.data ?? null;
 
   let mealEntries: MealEntry[] = [];
   let expenseEntries: ExpenseEntry[] = [];
 
   if (month) {
-    const { data: mealsData } = await supabase
-      .from("meal_entries")
-      .select("member_id, own_meal, guest_meal, meal_date")
-      .eq("month_id", month.id);
+    const [mealsRes, expensesRes] = await Promise.all([
+      supabase
+        .from("meal_entries")
+        .select("member_id, own_meal, guest_meal, meal_date")
+        .eq("month_id", month.id),
+      supabase
+        .from("expense_entries")
+        .select("expense_type, title, amount, paid_by_member_id")
+        .eq("month_id", month.id),
+    ]);
 
-    mealEntries = mealsData ?? [];
-
-    const { data: expensesData } = await supabase
-      .from("expense_entries")
-      .select("expense_type, title, amount, paid_by_member_id")
-      .eq("month_id", month.id);
-
-    expenseEntries = expensesData ?? [];
+    mealEntries = mealsRes.data ?? [];
+    expenseEntries = expensesRes.data ?? [];
   }
 
   const totalMembers = members.length;

@@ -69,6 +69,13 @@ export default function Sidebar({
   });
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem("mm_cached_username");
+      if (cached) setUserName(cached);
+    } catch {
+      // Ignore localStorage errors
+    }
+
     const supabase = createClient();
 
     async function getUser() {
@@ -85,18 +92,28 @@ export default function Sidebar({
         data.user.email?.split("@")[0] ||
         "User";
 
-      setUserName(String(resolvedName));
+      const finalName = String(resolvedName);
+      setUserName(finalName);
+      try {
+        localStorage.setItem("mm_cached_username", finalName);
+      } catch {
+        // Ignore localStorage errors
+      }
     }
 
     getUser();
   }, []);
 
   async function handleLogout() {
+    try {
+      localStorage.removeItem("mm_cached_username");
+    } catch {
+      // Ignore localStorage errors
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     onClose?.();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   }
 
   return (

@@ -129,11 +129,37 @@ export default async function ReportsPage({
   let expenses: ExpenseEntry[] = [];
   let charges: ChargeRow[] = [];
   let settlements: SettlementRow[] = [];
+  let bazarItems: BazarItem[] = [];
+  let dailyMeals: DailyMeal[] = [];
+  let memberNames: Record<string, string> = {};
+  let trendRows: { month_id: string; total_meal: number; meal_rate: number; bazar_paid: number }[] = [];
+
+  // Common parallel fetches: all members, trend data, itemized bazar, and daily meals
+  const allMembersPromise = supabase
+    .from("members")
+    .select("id, full_name, status")
+    .eq("group_id", group.id)
+    .order("created_at", { ascending: true });
+
+  const trendPromise = supabase
+    .from("settlements")
+    .select("month_id, total_meal, meal_rate, bazar_paid")
+    .eq("group_id", group.id);
+
+  const bazarItemsPromise = supabase
+    .from("expense_entries")
+    .select("id, expense_date, title, description, amount, paid_by_member_id")
+    .eq("month_id", selectedMonth.id)
+    .eq("expense_type", "bazar")
+    .order("expense_date", { ascending: true });
+
+  const dailyMealsPromise = supabase
+    .from("meal_entries")
+    .select("member_id, meal_date, own_meal, guest_meal")
+    .eq("month_id", selectedMonth.id);
 
   if (selectedMonth.status === "closed") {
-    // Closed months are frozen: read the per-member settlement rows saved at
-    // close time and reconstruct the report shape from them.
-    const { data: settlementsData } = await supabase
+    const settlementsPromise = supabase
       .from("settlements")
       .select(
         "member_id, total_own_meal, total_guest_meal, meal_rate, bazar_paid, shared_expense, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due, final_amount, paid_amount"
@@ -141,84 +167,68 @@ export default async function ReportsPage({
       .eq("group_id", group.id)
       .eq("month_id", selectedMonth.id);
 
-    const { data: membersData } = await supabase
-      .from("members")
-      .select("id, full_name")
-      .eq("group_id", group.id);
+    const [allMembersRes, trendRes, bazarRes, dailyMealsRes, settlementsRes] =
+      await Promise.all([
+        allMembersPromise,
+        trendPromise,
+        bazarItemsPromise,
+        dailyMealsPromise,
+        settlementsPromise,
+      ]);
 
-    const nameMap = Object.fromEntries(
-      (membersData ?? []).map((item) => [item.id, item.full_name])
+    const allMembersData = allMembersRes.data ?? [];
+    memberNames = Object.fromEntries(
+      allMembersData.map((item: { id: string; full_name: string }) => [item.id, item.full_name])
     );
 
-    const props = settlementsToReportProps(settlementsData ?? [], nameMap);
-
+    const props = settlementsToReportProps(settlementsRes.data ?? [], memberNames);
     members = props.members;
     meals = props.meals;
     expenses = props.expenses;
     charges = props.charges;
     settlements = props.settlementRows;
+    bazarItems = (bazarRes.data ?? []) as BazarItem[];
+    dailyMeals = (dailyMealsRes.data ?? []) as DailyMeal[];
+    trendRows = trendRes.data ?? [];
   } else {
-    const { data: membersData } = await supabase
-      .from("members")
-      .select("id, full_name")
-      .eq("group_id", group.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: true });
-
-    const { data: mealsData } = await supabase
-      .from("meal_entries")
-      .select("member_id, own_meal, guest_meal")
-      .eq("month_id", selectedMonth.id);
-
-    const { data: expensesData } = await supabase
+    const expensesPromise = supabase
       .from("expense_entries")
       .select("expense_type, amount, paid_by_member_id")
       .eq("month_id", selectedMonth.id);
 
-    const { data: chargesData } = await supabase
+    const chargesPromise = supabase
       .from("member_monthly_charges")
       .select(
         "member_id, rent, wifi, electricity, water, gas, khala_bill, utility, others, advance, discount, previous_due"
       )
       .eq("month_id", selectedMonth.id);
 
-    members = (membersData ?? []) as Member[];
-    meals = (mealsData ?? []) as MealEntry[];
-    expenses = (expensesData ?? []) as ExpenseEntry[];
-    charges = (chargesData ?? []) as ChargeRow[];
+    const [allMembersRes, trendRes, bazarRes, dailyMealsRes, expensesRes, chargesRes] =
+      await Promise.all([
+        allMembersPromise,
+        trendPromise,
+        bazarItemsPromise,
+        dailyMealsPromise,
+        expensesPromise,
+        chargesPromise,
+      ]);
+
+    const allMembersData = allMembersRes.data ?? [];
+    memberNames = Object.fromEntries(
+      allMembersData.map((item: { id: string; full_name: string }) => [item.id, item.full_name])
+    );
+
+    members = allMembersData
+      .filter((item: { status?: string }) => item.status === "active")
+      .map((item: { id: string; full_name: string }) => ({ id: item.id, full_name: item.full_name }));
+
+    dailyMeals = (dailyMealsRes.data ?? []) as DailyMeal[];
+    meals = dailyMeals;
+    expenses = (expensesRes.data ?? []) as ExpenseEntry[];
+    charges = (chargesRes.data ?? []) as ChargeRow[];
+    bazarItems = (bazarRes.data ?? []) as BazarItem[];
+    trendRows = trendRes.data ?? [];
   }
-
-  // All member names for the group (used to label the itemized bazar list,
-  // including members who have since left).
-  const { data: allMembersData } = await supabase
-    .from("members")
-    .select("id, full_name")
-    .eq("group_id", group.id);
-
-  const memberNames: Record<string, string> = Object.fromEntries(
-    (allMembersData ?? []).map((item) => [item.id, item.full_name])
-  );
-
-  // Itemized bazar list for the selected month. Read straight from
-  // expense_entries so we keep the per-purchase detail (date / item / who)
-  // that the frozen settlement snapshot collapses into a single total.
-  const { data: bazarItemsData } = await supabase
-    .from("expense_entries")
-    .select("id, expense_date, title, description, amount, paid_by_member_id")
-    .eq("month_id", selectedMonth.id)
-    .eq("expense_type", "bazar")
-    .order("expense_date", { ascending: true });
-
-  const bazarItems: BazarItem[] = (bazarItemsData ?? []) as BazarItem[];
-
-  // Per-day meal entries for the selected month, used to build the day-by-day
-  // meal grid (one "Meal" row per member = own + guest meals that day).
-  const { data: dailyMealsData } = await supabase
-    .from("meal_entries")
-    .select("member_id, meal_date, own_meal, guest_meal")
-    .eq("month_id", selectedMonth.id);
-
-  const dailyMeals: DailyMeal[] = (dailyMealsData ?? []) as DailyMeal[];
 
   // How many day-columns the grid should show. Derive the real length of the
   // selected month from any meal date; fall back to 31 when there is no data.
@@ -230,17 +240,12 @@ export default async function ReportsPage({
   }
 
   // Cost-per-meal trend: aggregate frozen settlement rows per closed month.
-  const { data: trendData } = await supabase
-    .from("settlements")
-    .select("month_id, total_meal, meal_rate, bazar_paid")
-    .eq("group_id", group.id);
-
   const trendAgg = new Map<
     string,
     { meals: number; bazar: number; rate: number }
   >();
 
-  (trendData ?? []).forEach((item) => {
+  trendRows.forEach((item) => {
     const current = trendAgg.get(item.month_id) ?? {
       meals: 0,
       bazar: 0,

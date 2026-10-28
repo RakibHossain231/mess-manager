@@ -22,13 +22,24 @@ export default async function ProfilePage() {
     redirect("/join");
   }
 
-  const { data: currentMonth } = await supabase
-    .from("months")
-    .select("id, label")
-    .eq("group_id", group.id)
-    .eq("status", "open")
-    .limit(1)
-    .maybeSingle();
+  // Fetch current month and default charges concurrently
+  const [currentMonthRes, defaultChargeRes] = await Promise.all([
+    supabase
+      .from("months")
+      .select("id, label")
+      .eq("group_id", group.id)
+      .eq("status", "open")
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("member_default_charges")
+      .select("rent, wifi, electricity, water, gas, khala_bill, utility, others")
+      .eq("member_id", member.id)
+      .maybeSingle(),
+  ]);
+
+  const currentMonth = currentMonthRes.data;
+  const defaultCharge = defaultChargeRes.data;
 
   // All 8 charge fields the admin sets for this member. Prefer the current
   // month's snapshot; fall back to the member's default charges.
@@ -60,16 +71,8 @@ export default async function ProfilePage() {
 
   // If no monthly snapshot yet, show the member's default charges instead.
   const hasMonthly = Object.values(charges).some((value) => Number(value) > 0);
-  if (!hasMonthly) {
-    const { data: defaultCharge } = await supabase
-      .from("member_default_charges")
-      .select("rent, wifi, electricity, water, gas, khala_bill, utility, others")
-      .eq("member_id", member.id)
-      .maybeSingle();
-
-    if (defaultCharge) {
-      charges = { ...emptyCharges, ...defaultCharge };
-    }
+  if (!hasMonthly && defaultCharge) {
+    charges = { ...emptyCharges, ...defaultCharge };
   }
 
   return (

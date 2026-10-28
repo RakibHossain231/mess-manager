@@ -103,13 +103,21 @@ export default async function ClosedMonthSettlementPage({
     closedMonths.find((item) => item.id === selectedMonthIdFromQuery) ??
     closedMonths[0];
 
-  const { data: settlementsData } = await supabase
-    .from("settlements")
-    .select(
-      "member_id, total_own_meal, total_guest_meal, meal_rate, bazar_paid, shared_expense, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due, final_amount, paid_amount"
-    )
-    .eq("group_id", group.id)
-    .eq("month_id", selectedMonth.id);
+  const [settlementsRes, membersRes] = await Promise.all([
+    supabase
+      .from("settlements")
+      .select(
+        "member_id, total_own_meal, total_guest_meal, meal_rate, bazar_paid, shared_expense, rent, wifi, electricity, water, gas, khala_bill, utility, others, discount, advance, previous_due, final_amount, paid_amount"
+      )
+      .eq("group_id", group.id)
+      .eq("month_id", selectedMonth.id),
+    supabase
+      .from("members")
+      .select("id, full_name")
+      .eq("group_id", group.id),
+  ]);
+
+  const settlementsData = settlementsRes.data;
 
   if (!settlementsData || settlementsData.length === 0) {
     return (
@@ -127,13 +135,8 @@ export default async function ClosedMonthSettlementPage({
     );
   }
 
-  const { data: membersData } = await supabase
-    .from("members")
-    .select("id, full_name")
-    .eq("group_id", group.id);
-
   const nameMap = Object.fromEntries(
-    (membersData ?? []).map((item) => [item.id, item.full_name])
+    (membersRes.data ?? []).map((item) => [item.id, item.full_name])
   );
 
   const props = settlementsToReportProps(settlementsData, nameMap);

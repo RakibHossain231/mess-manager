@@ -26,49 +26,48 @@ export default async function MembersPage() {
     redirect("/join");
   }
 
-  const { data: membersData } = await supabase
-    .from("members")
-    .select("*")
-    .eq("group_id", group.id)
-    .order("created_at", { ascending: true });
+  const [membersRes, monthRes] = await Promise.all([
+    supabase
+      .from("members")
+      .select("*")
+      .eq("group_id", group.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("months")
+      .select("id, label")
+      .eq("group_id", group.id)
+      .eq("status", "open")
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const members: Member[] = membersData ?? [];
+  const members: Member[] = membersRes.data ?? [];
+  const month = monthRes.data;
+  const memberIds = members.map((m) => m.id);
 
-  // Default charges are keyed by member_id (one row per member)
-  const { data: defaultsData } = await supabase
-    .from("member_default_charges")
-    .select("*")
-    .in(
-      "member_id",
-      members.map((m) => m.id)
-    );
+  const [defaultsRes, chargesRes] = await Promise.all([
+    memberIds.length > 0
+      ? supabase
+          .from("member_default_charges")
+          .select("*")
+          .in("member_id", memberIds)
+      : Promise.resolve({ data: [] }),
+    month
+      ? supabase
+          .from("member_monthly_charges")
+          .select("*")
+          .eq("month_id", month.id)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const defaultChargeMap = new Map(
-    (defaultsData as MemberDefaultCharge[] | null)?.map((c) => [
+    (defaultsRes.data as MemberDefaultCharge[] | null)?.map((c) => [
       c.member_id,
       c,
     ]) ?? []
   );
 
-  // Find the open month for this mess
-  const { data: month } = await supabase
-    .from("months")
-    .select("id, label")
-    .eq("group_id", group.id)
-    .eq("status", "open")
-    .limit(1)
-    .maybeSingle();
-
-  let monthlyCharges: MemberMonthlyCharge[] = [];
-
-  if (month) {
-    const { data: chargesData } = await supabase
-      .from("member_monthly_charges")
-      .select("*")
-      .eq("month_id", month.id);
-
-    monthlyCharges = chargesData ?? [];
-  }
+  const monthlyCharges: MemberMonthlyCharge[] = (chargesRes.data ?? []) as MemberMonthlyCharge[];
 
   return (
     <AppShell>
