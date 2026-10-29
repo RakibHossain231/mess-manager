@@ -20,7 +20,7 @@ import { createClient } from "@/lib/supabase/client";
 const navItems = [
   {
     label: "Dashboard",
-    href: "/dashboard",
+    href: "/",
     icon: LayoutDashboard,
   },
   {
@@ -158,7 +158,10 @@ export default function Sidebar({
       <nav className="space-y-2 px-4 py-6">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/"
+              ? pathname === "/" || pathname === "/dashboard"
+              : pathname.startsWith(item.href);
 
           return (
             <Link

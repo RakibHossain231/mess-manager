@@ -38,13 +38,11 @@ export default function AppShell({
         )}
 
         {/* Mobile Sidebar */}
-        <div
-          className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-white shadow-xl transition-transform duration-300 ease-out lg:hidden ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <Sidebar mobile onClose={() => setSidebarOpen(false)} />
-        </div>
+        {sidebarOpen && (
+          <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-white shadow-xl transition-transform duration-300 ease-out lg:hidden translate-x-0">
+            <Sidebar mobile onClose={() => setSidebarOpen(false)} />
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="flex min-w-0 flex-1 flex-col">

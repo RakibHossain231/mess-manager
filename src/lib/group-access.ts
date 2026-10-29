@@ -33,24 +33,32 @@ export const getUserGroupContext = cache(
     group: CurrentGroup | null;
     member: CurrentMember | null;
   }> => {
+    // 1-query fetch: join mess_groups directly with members in a single roundtrip
     const { data: linkedMember } = await supabase
       .from("members")
-      .select(MEMBER_COLUMNS)
+      .select(`${MEMBER_COLUMNS}, mess_groups(${GROUP_COLUMNS})`)
       .eq("user_id", userId)
       .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
     if (linkedMember) {
-      const { data: linkedGroup } = await supabase
-        .from("mess_groups")
-        .select(GROUP_COLUMNS)
-        .eq("id", linkedMember.group_id)
-        .single();
+      const rawGroup = linkedMember.mess_groups;
+      const group = Array.isArray(rawGroup) ? rawGroup[0] : rawGroup;
 
       return {
-        group: linkedGroup ?? null,
-        member: linkedMember ?? null,
+        group: (group as CurrentGroup) ?? null,
+        member: {
+          id: linkedMember.id,
+          group_id: linkedMember.group_id,
+          user_id: linkedMember.user_id,
+          role: linkedMember.role,
+          full_name: linkedMember.full_name,
+          email: linkedMember.email,
+          phone: linkedMember.phone,
+          nid: linkedMember.nid,
+          status: linkedMember.status,
+        },
       };
     }
 
