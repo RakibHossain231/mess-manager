@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import ExpensesForm from "./expenses-form";
 import { getUserGroupContext } from "@/lib/group-access";
@@ -22,10 +22,7 @@ type ExpenseItem = {
 
 export default async function ExpensesPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/login");

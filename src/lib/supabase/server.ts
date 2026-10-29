@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -24,4 +24,39 @@ export async function createClient() {
       },
     }
   );
+}
+
+/**
+ * Fast user lookup for Server Components.
+ * Reads the verified user ID from the request headers set by middleware in 0ms,
+ * avoiding a redundant remote HTTP roundtrip to Supabase Auth on every single page load.
+ */
+export async function getAuthUser(supabaseClient?: any): Promise<{
+  id: string;
+  email: string | null;
+} | null> {
+  try {
+    const headerStore = await headers();
+    const userId = headerStore.get("x-user-id");
+    const userEmail = headerStore.get("x-user-email");
+
+    if (userId) {
+      return { id: userId, email: userEmail || null };
+    }
+  } catch {
+    // If headers() is unavailable
+  }
+
+  // Safe fallback to remote call if header was not present
+  const client = supabaseClient ?? (await createClient());
+  const { data } = await client.auth.getUser();
+
+  if (data?.user) {
+    return {
+      id: data.user.id,
+      email: data.user.email ?? null,
+    };
+  }
+
+  return null;
 }

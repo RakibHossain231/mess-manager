@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import AppShell from "@/components/layout/app-shell";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import { getUserGroupContext } from "@/lib/group-access";
 import ClosedMonthSettlementView from "./closed-month-settlement-view";
 import { settlementsToReportProps } from "@/lib/report-snapshot";
@@ -57,10 +57,7 @@ export default async function ClosedMonthSettlementPage({
   searchParams?: Promise<{ month?: string }>;
 }) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/login");

@@ -1,13 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-function isAuthTokenFresh(cookies: { name: string; value: string }[]): boolean {
+function extractUserFromToken(cookies: { name: string; value: string }[]) {
   try {
     const tokenCookies = cookies
       .filter((c) => c.name.includes("-auth-token"))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    if (tokenCookies.length === 0) return false;
+    if (tokenCookies.length === 0) return null;
 
     const fullValue = tokenCookies.map((c) => c.value).join("");
     let parsed: any;
@@ -19,20 +19,24 @@ function isAuthTokenFresh(cookies: { name: string; value: string }[]): boolean {
     }
 
     const accessToken = Array.isArray(parsed) ? parsed[0] : parsed?.access_token;
-    if (!accessToken || typeof accessToken !== "string") return false;
+    if (!accessToken || typeof accessToken !== "string") return null;
 
     const parts = accessToken.split(".");
-    if (parts.length < 2) return false;
+    if (parts.length < 2) return null;
 
     const payload = JSON.parse(
       Buffer.from(parts[1], "base64").toString("utf8")
     );
     const now = Math.floor(Date.now() / 1000);
+    const isFresh = typeof payload.exp === "number" && payload.exp - now > 60;
 
-    // If the token is valid for more than 5 minutes, it doesn't need a refresh
-    return typeof payload.exp === "number" && payload.exp - now > 300;
+    return {
+      id: payload.sub as string,
+      email: (payload.email as string) || null,
+      isFresh,
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -61,14 +65,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If the user's access token is fresh (> 5 mins remaining), skip remote auth call!
-  // This saves 300ms - 600ms on every single page navigation!
-  if (hasAuthCookies && isAuthTokenFresh(cookiesList)) {
-    return NextResponse.next();
+  const tokenInfo = extractUserFromToken(cookiesList);
+
+  // If the user's access token is valid (> 1 min remaining), pass through with x-user-id header!
+  // This completely eliminates the 300ms - 500ms remote auth call on every single navigation!
+  if (tokenInfo && tokenInfo.isFresh) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-user-id", tokenInfo.id);
+    if (tokenInfo.email) requestHeaders.set("x-user-email", tokenInfo.email);
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
+  const requestHeaders = new Headers(request.headers);
   let response = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   });
 
   const supabase = createServerClient(
@@ -89,7 +106,15 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresh session when expired or expiring
-  await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser();
+  if (data?.user) {
+    requestHeaders.set("x-user-id", data.user.id);
+    if (data.user.email) requestHeaders.set("x-user-email", data.user.email);
+  } else if (!isPublicRoute) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
+  }
 
   return response;
 }

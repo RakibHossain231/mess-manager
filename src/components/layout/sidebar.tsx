@@ -127,6 +127,7 @@ export default function Sidebar({
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/profile"
+            prefetch={true}
             onClick={mobile ? onClose : undefined}
             className="flex min-w-0 items-center gap-3 rounded-2xl transition hover:bg-slate-50"
           >
@@ -167,6 +168,7 @@ export default function Sidebar({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               onClick={mobile ? onClose : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition",
@@ -193,6 +195,7 @@ export default function Sidebar({
           <div className="mt-2 space-y-1">
             <Link
               href="/profile"
+              prefetch={true}
               onClick={mobile ? onClose : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition",

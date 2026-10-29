@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import ReportsView from "@/app/reports/reports-view";
 import { getUserGroupContext } from "@/lib/group-access";
@@ -72,10 +72,7 @@ export default async function ReportsPage({
   searchParams?: Promise<{ month?: string }>;
 }) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/login");

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getAuthUser } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/app-shell";
 import SectionTitle from "@/components/shared/section-title";
 import ProfileDetailsCard from "@/components/profile/profile-details-card";
@@ -7,10 +7,7 @@ import { getUserGroupContext } from "@/lib/group-access";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser(supabase);
 
   if (!user) {
     redirect("/login");
