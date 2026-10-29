@@ -22,8 +22,6 @@ type ExpenseEntry = {
   paid_by_member_id: string | null;
 };
 
-// One row per member in member_monthly_charges (the snapshot keeps these at
-// month-close time so closed months never change).
 type ChargeRow = {
   member_id: string;
   rent: number;
@@ -52,6 +50,12 @@ type SettlementRow = {
   final_type: "pay" | "receive";
   paid_amount: number;
 };
+
+// Formatter for rounded whole Taka numbers
+const fmtMoney = (value: number) =>
+  "৳ " + Math.round(Number(value) || 0).toLocaleString("en-US");
+
+const roundNum = (value: number) => Math.round(Number(value) || 0);
 
 export default function ClosedMonthSettlementView({
   groupId,
@@ -109,17 +113,14 @@ export default function ClosedMonthSettlementView({
       settlements.map((item) => [
         item.member_id,
         {
-          finalAmount: Number(item.final_amount || 0),
+          finalAmount: roundNum(item.final_amount),
           finalType: item.final_type,
-          paidAmount: Number(item.paid_amount || 0),
+          paidAmount: roundNum(item.paid_amount),
         },
       ])
     );
   }, [settlements]);
 
-  // Important:
-  // Even if page accidentally sends extra members, view will only show members
-  // who have a charge row in this selected closed month.
   const monthMembers = useMemo(() => {
     return members.filter((member) => chargeMap.has(member.id));
   }, [members, chargeMap]);
@@ -174,13 +175,13 @@ export default function ClosedMonthSettlementView({
       const computedFinalType: "pay" | "receive" =
         rawFinalBalance >= 0 ? "receive" : "pay";
 
-      const computedFinalAmount = Math.abs(rawFinalBalance);
+      const computedFinalAmount = roundNum(Math.abs(rawFinalBalance));
 
       const savedSettlement = settlementMap.get(member.id);
 
       const finalType = savedSettlement?.finalType ?? computedFinalType;
-      const finalAmount = Number(savedSettlement?.finalAmount ?? computedFinalAmount);
-      const paidAmount = Number(savedSettlement?.paidAmount ?? 0);
+      const finalAmount = roundNum(savedSettlement?.finalAmount ?? computedFinalAmount);
+      const paidAmount = roundNum(savedSettlement?.paidAmount ?? 0);
       const remaining = Math.max(finalAmount - paidAmount, 0);
 
       const finalTypeLabel =
@@ -220,13 +221,18 @@ export default function ClosedMonthSettlementView({
     settlementMap,
   ]);
 
+  // Editable inputs for Paid Amount, initialized with current saved paidAmount
   const [entryValues, setEntryValues] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    setEntryValues(Object.fromEntries(rows.map((row) => [row.id, "0.00"])));
-  }, [selectedMonthId, rows]);
-
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  // Sync inputs on selected month change
+  useEffect(() => {
+    const initial: Record<string, string> = {};
+    for (const row of rows) {
+      initial[row.id] = String(row.paidAmount);
+    }
+    setEntryValues(initial);
+  }, [selectedMonthId, settlements]);
 
   const totalWillPay = rows
     .filter((row) => row.finalType === "pay")
@@ -237,7 +243,6 @@ export default function ClosedMonthSettlementView({
     .reduce((sum, row) => sum + row.finalAmount, 0);
 
   const totalPaidAmount = rows.reduce((sum, row) => sum + row.paidAmount, 0);
-
   const totalRemaining = rows.reduce((sum, row) => sum + row.remaining, 0);
 
   const handleMonthChange = (monthId: string) => {
@@ -247,46 +252,36 @@ export default function ClosedMonthSettlementView({
   };
 
   const handleSave = async (row: (typeof rows)[number]) => {
-    const rawEntry = Number(entryValues[row.id] ?? 0);
-    const safeEntry = Math.max(rawEntry, 0);
+    const rawEntry = entryValues[row.id];
+    let newPaidAmount =
+      rawEntry !== undefined && rawEntry !== ""
+        ? roundNum(Number(rawEntry))
+        : row.paidAmount;
 
-    const maxAllowedEntry = row.remaining;
-    const entryAmount = Math.min(safeEntry, maxAllowedEntry);
-
-    if (entryAmount <= 0) {
-      alert("Enter a valid amount.");
+    if (isNaN(newPaidAmount) || newPaidAmount < 0) {
+      alert("Please enter a valid amount.");
       return;
     }
 
-    const nextPaidAmount = Math.min(row.paidAmount + entryAmount, row.finalAmount);
-    const nextDue = Math.max(row.finalAmount - nextPaidAmount, 0);
+    if (newPaidAmount > row.finalAmount) {
+      newPaidAmount = row.finalAmount;
+    }
+
+    const nextDue = Math.max(row.finalAmount - newPaidAmount, 0);
     const nextStatus =
-      nextDue <= 0 ? "paid" : nextPaidAmount > 0 ? "partial" : "unpaid";
+      nextDue <= 0 && row.finalAmount > 0
+        ? "paid"
+        : newPaidAmount > 0
+        ? "partial"
+        : "unpaid";
 
     setSavingId(row.id);
 
-    // Ledger row for this payment, then roll the aggregates on the frozen
-    // settlement row so the report/settlement pages reflect it immediately.
-    const { error: paymentError } = await supabase.from("payments").insert({
-      group_id: groupId,
-      month_id: selectedMonthId,
-      member_id: row.id,
-      amount: entryAmount,
-      payment_date: new Date().toISOString().slice(0, 10),
-      payment_method: "cash",
-      status: nextStatus,
-    });
-
-    if (paymentError) {
-      setSavingId(null);
-      alert(paymentError.message);
-      return;
-    }
-
+    // Update the settlement row in database
     const { error: settlementError } = await supabase
       .from("settlements")
       .update({
-        paid_amount: nextPaidAmount,
+        paid_amount: newPaidAmount,
         due_amount: nextDue,
         status: nextStatus,
       })
@@ -294,19 +289,35 @@ export default function ClosedMonthSettlementView({
       .eq("month_id", selectedMonthId)
       .eq("member_id", row.id);
 
-    setSavingId(null);
-
     if (settlementError) {
+      setSavingId(null);
       alert(settlementError.message);
       return;
     }
 
+    // Record delta in payments ledger if increased
+    const delta = newPaidAmount - row.paidAmount;
+    if (delta > 0) {
+      await supabase.from("payments").insert({
+        group_id: groupId,
+        month_id: selectedMonthId,
+        member_id: row.id,
+        amount: delta,
+        payment_date: new Date().toISOString().slice(0, 10),
+        payment_method: "cash",
+        status: nextStatus,
+      });
+    }
+
+    setSavingId(null);
+    router.refresh();
+  };
+
+  const fillFull = (memberId: string, finalAmount: number) => {
     setEntryValues((prev) => ({
       ...prev,
-      [row.id]: "0.00",
+      [memberId]: String(finalAmount),
     }));
-
-    router.refresh();
   };
 
   return (
@@ -321,7 +332,7 @@ export default function ClosedMonthSettlementView({
               <b>{monthLabel}</b>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Owner, admin and manager can edit. Members can view only.
+              Owner, admin and manager can edit paid amounts. Members can view only.
             </p>
           </div>
 
@@ -348,28 +359,27 @@ export default function ClosedMonthSettlementView({
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">Total Due</p>
           <h3 className="mt-2 text-2xl font-bold text-red-700">
-            ৳ {(totalWillPay + totalWillReceive).toFixed(2)}
+            {fmtMoney(totalWillPay + totalWillReceive)}
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Total due = paid amount + remaining
+            Total settlement amount for this month
           </p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">Paid Amount</p>
           <h3 className="mt-2 text-2xl font-bold text-slate-900">
-            ৳ {totalPaidAmount.toFixed(2)}
+            {fmtMoney(totalPaidAmount)}
           </h3>
+          <p className="mt-1 text-xs text-slate-500">Total collected / cleared</p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">Remaining</p>
           <h3 className="mt-2 text-2xl font-bold text-slate-900">
-            ৳ {totalRemaining.toFixed(2)}
+            {fmtMoney(totalRemaining)}
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Remaining = total will pay + total will receive
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Total outstanding balance</p>
         </div>
       </div>
 
@@ -377,7 +387,7 @@ export default function ClosedMonthSettlementView({
         <div className="mb-4">
           <h2 className="text-xl font-bold text-slate-900">Settlement List</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Update Paid Amount here. Report page for this same month will update automatically.
+            Enter any paid amount (partial or full). Values are automatically rounded to whole Taka.
           </p>
         </div>
 
@@ -397,18 +407,31 @@ export default function ClosedMonthSettlementView({
 
             <tbody>
               {rows.map((row) => {
-                const rawEntry = Number(entryValues[row.id] ?? 0);
-                const safeEntry = Math.max(rawEntry, 0);
-                const previewEntry = Math.min(safeEntry, row.remaining);
+                const currentVal = entryValues[row.id];
+                const enteredPaid =
+                  currentVal !== undefined && currentVal !== ""
+                    ? Math.max(0, roundNum(Number(currentVal) || 0))
+                    : row.paidAmount;
 
-                const previewPaid = Math.min(
-                  row.paidAmount + previewEntry,
-                  row.finalAmount
-                );
-
+                const previewPaid = Math.min(enteredPaid, row.finalAmount);
                 const previewRemaining = Math.max(row.finalAmount - previewPaid, 0);
 
-                const savedIsDone = row.statusLabel === "Done";
+                const isDone = previewRemaining <= 0 && row.finalAmount > 0;
+                const isPartial = previewPaid > 0 && previewRemaining > 0;
+
+                const previewStatusLabel = isDone
+                  ? "Done"
+                  : isPartial
+                  ? "Partial"
+                  : "Pending";
+
+                const previewFinalTypeLabel = isDone
+                  ? row.finalType === "receive"
+                    ? "Received"
+                    : "Paid"
+                  : row.finalType === "receive"
+                  ? "Will Receive"
+                  : "Will Pay";
 
                 return (
                   <tr key={row.id} className="bg-slate-50 text-sm text-slate-700">
@@ -419,102 +442,87 @@ export default function ClosedMonthSettlementView({
                     <td className="px-3 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          row.finalTypeLabel === "Received"
+                          previewFinalTypeLabel === "Received"
                             ? "bg-emerald-100 text-emerald-700"
-                            : row.finalTypeLabel === "Paid"
+                            : previewFinalTypeLabel === "Paid"
                             ? "bg-blue-100 text-blue-700"
                             : row.finalType === "receive"
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-700"
                         }`}
                       >
-                        {row.finalTypeLabel}
+                        {previewFinalTypeLabel}
                       </span>
                     </td>
 
                     <td className="px-3 py-4 font-semibold">
-                      ৳ {row.finalAmount.toFixed(2)}
+                      {fmtMoney(row.finalAmount)}
                     </td>
 
                     <td className="px-3 py-4">
-                      {canEdit && !savedIsDone ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max={row.remaining}
-                          step="0.01"
-                          value={entryValues[row.id] ?? "0.00"}
-                          onChange={(e) => {
-                            const nextValue = e.target.value;
-
-                            if (nextValue === "") {
+                      {canEdit ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400 font-medium">৳</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={row.finalAmount}
+                            step="1"
+                            value={entryValues[row.id] ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
                               setEntryValues((prev) => ({
                                 ...prev,
-                                [row.id]: "",
+                                [row.id]: val,
                               }));
-                              return;
-                            }
-
-                            const numericValue = Number(nextValue);
-
-                            if (numericValue > row.remaining) {
-                              setEntryValues((prev) => ({
-                                ...prev,
-                                [row.id]: row.remaining.toFixed(2),
-                              }));
-                              return;
-                            }
-
-                            setEntryValues((prev) => ({
-                              ...prev,
-                              [row.id]: nextValue,
-                            }));
-                          }}
-                          className="w-[130px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-teal-600"
-                        />
+                            }}
+                            className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                          />
+                        </div>
                       ) : (
-                        <span>৳ {row.paidAmount.toFixed(2)}</span>
+                        <span>{fmtMoney(row.paidAmount)}</span>
                       )}
                     </td>
 
-                    <td className="px-3 py-4">
-                      ৳{" "}
-                      {(canEdit && !savedIsDone
-                        ? previewRemaining
-                        : row.remaining
-                      ).toFixed(2)}
+                    <td className="px-3 py-4 font-medium">
+                      {fmtMoney(canEdit ? previewRemaining : row.remaining)}
                     </td>
 
                     <td className="px-3 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          row.statusLabel === "Done"
+                          previewStatusLabel === "Done"
                             ? "bg-green-100 text-green-700"
-                            : row.statusLabel === "Partial"
+                            : previewStatusLabel === "Partial"
                             ? "bg-amber-100 text-amber-700"
                             : "bg-slate-200 text-slate-700"
                         }`}
                       >
-                        {row.statusLabel}
+                        {previewStatusLabel}
                       </span>
                     </td>
 
                     {canEdit ? (
                       <td className="rounded-r-2xl px-3 py-4">
-                        {!savedIsDone ? (
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleSave(row)}
                             disabled={savingId === row.id}
-                            className="rounded-2xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-xl bg-teal-700 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
                           >
                             {savingId === row.id ? "Saving..." : "Save"}
                           </button>
-                        ) : (
-                          <span className="rounded-2xl bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
-                            Closed
-                          </span>
-                        )}
+
+                          <button
+                            type="button"
+                            onClick={() => fillFull(row.id, row.finalAmount)}
+                            className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 shadow-sm"
+                            title="Fill full remaining amount"
+                          >
+                            Full
+                          </button>
+                        </div>
                       </td>
                     ) : null}
                   </tr>

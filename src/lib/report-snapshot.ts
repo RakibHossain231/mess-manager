@@ -112,10 +112,10 @@ export function buildSettlementRows({
       previousDue;
 
     // What the member owes to the mess before their bazar contribution.
-    const grossAmount = mealCost + sharedExpense + chargesSum;
+    const grossAmount = Math.round(mealCost + sharedExpense + chargesSum);
 
-    // Signed: positive => receive, negative => pay.
-    const finalAmount = bazarPaid - grossAmount;
+    // Signed: positive => receive, negative => pay (rounded to whole Taka).
+    const finalAmount = Math.round(bazarPaid - (mealCost + sharedExpense + chargesSum));
 
     return {
       group_id: groupId,
