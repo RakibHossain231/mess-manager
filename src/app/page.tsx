@@ -289,7 +289,7 @@ export default async function HomePage() {
           />
         </div>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <SectionTitle
             title="Member Live Summary"
             subtitle="Current month meal and bazar summary for each member"
@@ -298,7 +298,7 @@ export default async function HomePage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-y-3">
               <thead>
-                <tr className="text-left text-sm text-slate-500">
+                <tr className="text-left text-sm text-slate-500 dark:text-slate-400">
                   <th className="px-4 py-2">Member</th>
                   <th className="px-4 py-2">Own Meal</th>
                   <th className="px-4 py-2">Guest Meal</th>
@@ -319,9 +319,9 @@ export default async function HomePage() {
                 {memberSummaries.map((item) => (
                   <tr
                     key={item.id}
-                    className="rounded-2xl bg-slate-50 text-sm text-slate-700 shadow-sm"
+                    className="rounded-2xl bg-slate-50 text-sm text-slate-700 shadow-sm dark:bg-slate-800/60 dark:text-slate-200"
                   >
-                    <td className="rounded-l-2xl px-4 py-4 font-semibold text-slate-900">
+                    <td className="rounded-l-2xl px-4 py-4 font-semibold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
                     <td className="px-4 py-4">{item.ownMeal.toFixed(1)}</td>
@@ -340,20 +340,20 @@ export default async function HomePage() {
                           className={cn(
                             "px-4 py-4 font-semibold",
                             item.estimatedBalance < 0
-                              ? "text-red-500"
+                              ? "text-red-500 dark:text-red-400"
                               : item.estimatedBalance > 0
-                                ? "text-teal-600"
-                                : "text-slate-500"
+                                ? "text-teal-600 dark:text-teal-400"
+                                : "text-slate-500 dark:text-slate-400"
                           )}
                         >
                           ৳ {item.estimatedBalance.toFixed(2)}
                         </td>
-                          <td className="px-4 py-4">
+                        <td className="px-4 py-4">
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-medium ${
                               item.estimatedBalance >= 0
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
+                                ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                                : "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400"
                             }`}
                           >
                             {item.estimatedBalance >= 0 ? "Will Receive" : "Will Pay"}
@@ -370,17 +370,17 @@ export default async function HomePage() {
 
         {/* Meal Summary — SS-1 style day-by-day grid, one "Meal" row per member. */}
         {month && members.length > 0 ? (
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                   Meal Summary
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Day-by-day meals per member for {month.label} (own + guest).
                 </p>
               </div>
-              <p className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-700">
+              <p className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
                 Grand Total Meals: {totalMealFmt(mealGridGrandTotal)}
               </p>
             </div>
@@ -388,20 +388,20 @@ export default async function HomePage() {
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-[10px]">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-600">
-                    <th className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold">
+                  <tr className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <th className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200">
                       Member
                     </th>
-                    <th className="border border-slate-200 px-1.5 py-1.5 font-semibold">
+                    <th className="border border-slate-200 px-1.5 py-1.5 font-semibold dark:border-slate-800">
                       Type
                     </th>
-                    <th className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold">
+                    <th className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold dark:border-slate-800">
                       Total
                     </th>
                     {dayNumbers.map((day) => (
                       <th
                         key={day}
-                        className="border border-slate-200 px-1 py-1.5 text-center font-semibold"
+                        className="border border-slate-200 px-1 py-1.5 text-center font-semibold dark:border-slate-800"
                       >
                         {day}
                       </th>
@@ -410,20 +410,20 @@ export default async function HomePage() {
                 </thead>
                 <tbody>
                   {mealGridRows.map((row) => (
-                    <tr key={row.id} className="text-slate-700">
-                      <td className="sticky left-0 z-10 whitespace-nowrap border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-900">
+                    <tr key={row.id} className="text-slate-700 dark:text-slate-300">
+                      <td className="sticky left-0 z-10 whitespace-nowrap border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                         {row.name}
                       </td>
-                      <td className="border border-slate-200 px-1.5 py-1.5 text-center text-slate-500">
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
                         Meal
                       </td>
-                      <td className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold text-slate-900">
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold text-slate-900 dark:border-slate-800 dark:text-white">
                         {totalMealFmt(row.rowTotal)}
                       </td>
                       {row.dayValues.map((value, index) => (
                         <td
                           key={index}
-                          className="border border-slate-200 px-1 py-1.5 text-center"
+                          className="border border-slate-200 px-1 py-1.5 text-center dark:border-slate-800"
                         >
                           {cellMeal(value)}
                         </td>
@@ -432,12 +432,12 @@ export default async function HomePage() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-50 font-bold text-slate-900">
-                    <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <tr className="bg-slate-50 font-bold text-slate-900 dark:bg-slate-800 dark:text-white">
+                    <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-800">
                       Grand Total
                     </td>
-                    <td className="border border-slate-200 px-1.5 py-1.5" />
-                    <td className="border border-slate-200 px-1.5 py-1.5 text-right">
+                    <td className="border border-slate-200 px-1.5 py-1.5 dark:border-slate-800" />
+                    <td className="border border-slate-200 px-1.5 py-1.5 text-right dark:border-slate-800">
                       {totalMealFmt(mealGridGrandTotal)}
                     </td>
                     {dayNumbers.map((day, index) => {
@@ -448,7 +448,7 @@ export default async function HomePage() {
                       return (
                         <td
                           key={day}
-                          className="border border-slate-200 px-1 py-1.5 text-center"
+                          className="border border-slate-200 px-1 py-1.5 text-center dark:border-slate-800"
                         >
                           {cellMeal(dayTotal)}
                         </td>

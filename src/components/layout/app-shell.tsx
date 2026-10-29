@@ -22,7 +22,7 @@ export default function AppShell({
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 transition-colors dark:bg-slate-950">
       <div className="flex min-h-screen">
         {/* Desktop Sidebar */}
         <Sidebar />

@@ -322,28 +322,28 @@ export default function ClosedMonthSettlementView({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
               Closed Month Settlement
             </h1>
-            <p className="mt-2 text-slate-600">
+            <p className="mt-2 text-slate-600 dark:text-slate-300">
               <b>{monthLabel}</b>
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Owner, admin and manager can edit paid amounts. Members can view only.
             </p>
           </div>
 
           <div className="w-full md:w-[280px]">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Select Closed Month
             </label>
             <select
               value={selectedMonthId}
               onChange={(e) => handleMonthChange(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               {months.map((month) => (
                 <option key={month.id} value={month.id}>
@@ -356,37 +356,37 @@ export default function ClosedMonthSettlementView({
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Total Due</p>
-          <h3 className="mt-2 text-2xl font-bold text-red-700">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Total Due</p>
+          <h3 className="mt-2 text-2xl font-bold text-red-700 dark:text-red-400">
             {fmtMoney(totalWillPay + totalWillReceive)}
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Total settlement amount for this month
           </p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Paid Amount</p>
-          <h3 className="mt-2 text-2xl font-bold text-slate-900">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Paid Amount</p>
+          <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
             {fmtMoney(totalPaidAmount)}
           </h3>
-          <p className="mt-1 text-xs text-slate-500">Total collected / cleared</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Total collected / cleared</p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">Remaining</p>
-          <h3 className="mt-2 text-2xl font-bold text-slate-900">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Remaining</p>
+          <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
             {fmtMoney(totalRemaining)}
           </h3>
-          <p className="mt-1 text-xs text-slate-500">Total outstanding balance</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Total outstanding balance</p>
         </div>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4">
-          <h2 className="text-xl font-bold text-slate-900">Settlement List</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Settlement List</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Enter any paid amount (partial or full). Values are automatically rounded to whole Taka.
           </p>
         </div>
@@ -394,7 +394,7 @@ export default function ClosedMonthSettlementView({
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-3">
             <thead>
-              <tr className="text-left text-sm text-slate-500">
+              <tr className="text-left text-sm text-slate-500 dark:text-slate-400">
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium">Final Amount</th>
@@ -434,8 +434,8 @@ export default function ClosedMonthSettlementView({
                   : "Will Pay";
 
                 return (
-                  <tr key={row.id} className="bg-slate-50 text-sm text-slate-700">
-                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                  <tr key={row.id} className="bg-slate-50 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900 dark:text-white">
                       {row.name}
                     </td>
 
@@ -443,26 +443,26 @@ export default function ClosedMonthSettlementView({
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           previewFinalTypeLabel === "Received"
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                             : previewFinalTypeLabel === "Paid"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400"
                             : row.finalType === "receive"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400"
                         }`}
                       >
                         {previewFinalTypeLabel}
                       </span>
                     </td>
 
-                    <td className="px-3 py-4 font-semibold">
+                    <td className="px-3 py-4 font-semibold text-slate-900 dark:text-white">
                       {fmtMoney(row.finalAmount)}
                     </td>
 
                     <td className="px-3 py-4">
                       {canEdit ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-slate-400 font-medium">৳</span>
+                          <span className="text-slate-400 dark:text-slate-500 font-medium">৳</span>
                           <input
                             type="number"
                             min="0"
@@ -476,7 +476,7 @@ export default function ClosedMonthSettlementView({
                                 [row.id]: val,
                               }));
                             }}
-                            className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                            className="w-28 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-teal-600 focus:ring-1 focus:ring-teal-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                           />
                         </div>
                       ) : (
@@ -484,7 +484,7 @@ export default function ClosedMonthSettlementView({
                       )}
                     </td>
 
-                    <td className="px-3 py-4 font-medium">
+                    <td className="px-3 py-4 font-medium text-slate-900 dark:text-white">
                       {fmtMoney(canEdit ? previewRemaining : row.remaining)}
                     </td>
 
@@ -492,10 +492,10 @@ export default function ClosedMonthSettlementView({
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           previewStatusLabel === "Done"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
                             : previewStatusLabel === "Partial"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-slate-200 text-slate-700"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
                         }`}
                       >
                         {previewStatusLabel}
@@ -517,7 +517,7 @@ export default function ClosedMonthSettlementView({
                           <button
                             type="button"
                             onClick={() => fillFull(row.id, row.finalAmount)}
-                            className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 shadow-sm"
+                            className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                             title="Fill full remaining amount"
                           >
                             Full

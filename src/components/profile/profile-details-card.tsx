@@ -45,14 +45,14 @@ function formatRole(role: string) {
 
 function getRoleBadgeClasses(role: string) {
   if (role === "admin") {
-    return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:ring-emerald-800";
   }
 
   if (role === "manager") {
-    return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+    return "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:ring-amber-800";
   }
 
-  return "bg-sky-50 text-sky-700 ring-1 ring-sky-200";
+  return "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-400 dark:ring-sky-800";
 }
 
 type InfoItemProps = {
@@ -62,11 +62,11 @@ type InfoItemProps = {
 
 function InfoItem({ label, value }: InfoItemProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
       </p>
-      <p className="mt-1 break-all text-sm font-medium text-slate-900">
+      <p className="mt-1 break-all text-sm font-medium text-slate-900 dark:text-white">
         {value}
       </p>
     </div>
@@ -97,8 +97,8 @@ function EditableItem({
   textarea = false,
 }: EditableItemProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
       </p>
 
@@ -110,7 +110,7 @@ function EditableItem({
           disabled={disabled}
           rows={2}
           placeholder={placeholder}
-          className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0 disabled:py-0"
+          className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0 disabled:py-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
       ) : (
         <input
@@ -120,7 +120,7 @@ function EditableItem({
           onChange={onChange}
           disabled={disabled}
           placeholder={placeholder}
-          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0"
+          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
       )}
     </div>
@@ -332,16 +332,16 @@ export default function ProfileDetailsCard({
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-xl font-bold text-white shadow-sm">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-teal-700 text-xl font-bold text-white shadow-sm">
             {(formData.name?.trim()?.charAt(0) || initial).toUpperCase()}
           </div>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 {formData.name || "User"}
               </h2>
               <span
@@ -353,18 +353,18 @@ export default function ProfileDetailsCard({
               </span>
             </div>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Logged in account and mess information
             </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Current Open Month
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
               {currentOpenMonthText || "No open month"}
             </p>
           </div>
@@ -373,7 +373,7 @@ export default function ProfileDetailsCard({
             <button
               type="button"
               onClick={handleEditToggle}
-              className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+              className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 shadow-sm"
             >
               Edit Profile
             </button>
@@ -383,7 +383,7 @@ export default function ProfileDetailsCard({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>
@@ -392,7 +392,7 @@ export default function ProfileDetailsCard({
                 type="button"
                 onClick={handleCancel}
                 disabled={saving}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
               >
                 Cancel
               </button>
@@ -402,7 +402,7 @@ export default function ProfileDetailsCard({
       </div>
 
       {message ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200">
           {message}
         </div>
       ) : null}
@@ -454,10 +454,10 @@ export default function ProfileDetailsCard({
 
       <div className="mt-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-base font-bold text-slate-900">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
             My Monthly Charges
           </h3>
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {currentOpenMonthText} · Set by admin
           </span>
         </div>
@@ -466,35 +466,35 @@ export default function ProfileDetailsCard({
           {chargeRows.map((row) => (
             <div
               key={row.key}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {row.label}
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
                 ৳ {row.value.toFixed(0)}
               </p>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center justify-between rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
-          <p className="text-sm font-semibold text-teal-800">Total Charges</p>
-          <p className="text-base font-bold text-teal-900">
+        <div className="mt-4 flex items-center justify-between rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-900/60 dark:bg-teal-950/40">
+          <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">Total Charges</p>
+          <p className="text-base font-bold text-teal-900 dark:text-white">
             ৳ {chargeTotal.toFixed(0)}
           </p>
         </div>
       </div>
 
-      <div className="mt-8 border-t border-slate-200 pt-6">
-        <h3 className="text-base font-bold text-slate-900">Change Password</h3>
-        <p className="mt-1 text-sm text-slate-500">
+      <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Change Password</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Set a new password for your account. No old password required.
         </p>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               New Password
             </p>
             <input
@@ -503,12 +503,12 @@ export default function ProfileDetailsCard({
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={passwordSaving}
               placeholder="Enter new password"
-              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Confirm Password
             </p>
             <input
@@ -517,7 +517,7 @@ export default function ProfileDetailsCard({
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={passwordSaving}
               placeholder="Re-enter new password"
-              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
         </div>
@@ -527,13 +527,13 @@ export default function ProfileDetailsCard({
             type="button"
             onClick={handleChangePassword}
             disabled={passwordSaving}
-            className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
           >
             {passwordSaving ? "Updating..." : "Update Password"}
           </button>
 
           {passwordMessage ? (
-            <span className="text-sm font-medium text-slate-600">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
               {passwordMessage}
             </span>
           ) : null}

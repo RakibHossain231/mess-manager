@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ThemeToggle from "@/components/theme/theme-toggle";
 
 type JoinRole = "admin" | "manager" | "member";
 
@@ -204,14 +205,18 @@ export default function JoinPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <main className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
+        <ThemeToggle />
+      </div>
+
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
         {pendingApproval ? (
           <>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Request Pending
             </h1>
-            <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800 ring-1 ring-amber-200">
+            <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-800">
               Your join request has been sent to the mess admin. You will get
               access as soon as an admin approves you.
             </div>
@@ -222,22 +227,22 @@ export default function JoinPage() {
                 router.refresh();
               }}
               disabled={leaving}
-              className="mt-6 w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-6 w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               Check Approval Status
             </button>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-slate-900">Join a Mess</h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Join a Mess</h1>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
               Enter your mess join code. Your profile name and mobile number
               will be used automatically.
             </p>
 
             <form onSubmit={handleJoin} className="mt-6 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Join Code
                 </label>
                 <input
@@ -245,13 +250,13 @@ export default function JoinPage() {
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
                   placeholder="Enter join code"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-teal-600"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   required
                 />
               </div>
 
               {errorText ? (
-                <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950/60 dark:text-red-400">
                   {errorText}
                 </p>
               ) : null}
@@ -259,7 +264,7 @@ export default function JoinPage() {
               <button
                 type="submit"
                 disabled={loading || leaving}
-                className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
               >
                 {loading ? "Joining..." : "Join Mess"}
               </button>
@@ -271,15 +276,15 @@ export default function JoinPage() {
           type="button"
           onClick={handleBackToLogin}
           disabled={loading || leaving}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
         >
           <ArrowLeft className="h-4 w-4" />
           {leaving ? "Going to login..." : "Back to Login"}
         </button>
 
-        <div className="mt-5 text-center text-sm text-slate-600">
+        <div className="mt-5 text-center text-sm text-slate-600 dark:text-slate-400">
           Want to create your own mess?{" "}
-          <Link href="/setup" className="font-semibold text-teal-700">
+          <Link href="/setup" className="font-semibold text-teal-700 hover:underline dark:text-teal-400">
             Create a new mess
           </Link>
         </div>

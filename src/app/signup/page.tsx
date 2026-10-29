@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ThemeToggle from "@/components/theme/theme-toggle";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -87,22 +88,26 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-2xl font-bold text-slate-900">Create Account</h1>
-        <p className="mt-2 text-sm text-slate-600">
+    <main className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 dark:bg-slate-950">
+      <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
+        <ThemeToggle />
+      </div>
+
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create Account</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Create your account, then join an existing mess or create a new one.
         </p>
 
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Full Name
             </label>
             <input
               type="text"
               placeholder="Enter your full name"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
@@ -110,13 +115,13 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Mobile Number
             </label>
             <input
               type="text"
               placeholder="Enter your mobile number"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={mobileNumber}
               onChange={(e) => setMobileNumber(e.target.value)}
               required
@@ -124,13 +129,13 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Email
             </label>
             <input
               type="email"
               placeholder="Enter your email"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -138,13 +143,13 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Password
             </label>
             <input
               type="password"
               placeholder="Create a password"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -153,13 +158,13 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Confirm Password
             </label>
             <input
               type="password"
               placeholder="Re-enter your password"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -168,7 +173,7 @@ export default function SignupPage() {
           </div>
 
           {errorText ? (
-            <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950/60 dark:text-red-400">
               {errorText}
             </p>
           ) : null}
@@ -176,15 +181,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
           >
             {loading ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
-        <p className="mt-5 text-sm text-slate-600">
+        <p className="mt-5 text-sm text-slate-600 dark:text-slate-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-teal-700">
+          <Link href="/login" className="font-semibold text-teal-700 hover:underline dark:text-teal-400">
             Login
           </Link>
         </p>

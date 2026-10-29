@@ -244,30 +244,30 @@ export default function MonthActions({
       <div className="flex flex-wrap items-center gap-3">
         <a
           href="/reports"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Review / Download Report
         </a>
 
         <button
           onClick={() => setShowConfirm((prev) => !prev)}
-          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-teal-700 dark:hover:bg-teal-600"
         >
           Close Current Month
         </button>
       </div>
 
       {!normalCloseAllowed ? (
-        <p className="text-sm text-amber-700">
+        <p className="text-sm text-amber-700 dark:text-amber-400">
           Normal month close is allowed after 25th. Before that, force close is required.
         </p>
       ) :null}
 
       {showConfirm ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
-          <h3 className="text-base font-bold text-slate-900">Confirm Month Close</h3>
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40">
+          <h3 className="text-base font-bold text-slate-900 dark:text-amber-200">Confirm Month Close</h3>
 
-          <div className="mt-3 space-y-3 text-sm text-slate-700">
+          <div className="mt-3 space-y-3 text-sm text-slate-700 dark:text-amber-100/90">
             <p>
               This will close the current month, save frozen settlement rows, and
               create the next month automatically.
@@ -309,7 +309,7 @@ export default function MonthActions({
 
             <button
               onClick={() => setShowConfirm(false)}
-              className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Cancel
             </button>
@@ -317,7 +317,7 @@ export default function MonthActions({
         </div>
       ) :null}
 
-      {msg ? <p className="text-sm text-slate-700">{msg}</p> :null}
+      {msg ? <p className="text-sm text-slate-700 dark:text-slate-300">{msg}</p> :null}
     </div>
   );
 }

@@ -342,8 +342,8 @@ export default function MealsForm({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Meal Entry</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Meal Entry</h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
           {canManageMeals
             ? "Pick a date once, then enter meals for every member together."
             : "You can only view your own meal history and overall mess total meals."}
@@ -351,21 +351,21 @@ export default function MealsForm({
       </div>
 
       {canManageMeals ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Add Daily Meals</h2>
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add Daily Meals</h2>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Date
               </label>
               <input
                 type="date"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 {enteredCount > 0
                   ? `${enteredCount} member(s) already have entries on this date — shown below and editable.`
                   : "No entries yet on this date."}
@@ -374,7 +374,7 @@ export default function MealsForm({
 
             <div className="flex items-end">
               <div className="w-full">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Quick fill (Own meal for everyone)
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -383,7 +383,7 @@ export default function MealsForm({
                       key={value}
                       type="button"
                       onClick={() => setAllOwn(value)}
-                      className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-teal-600 hover:text-teal-700"
+                      className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-teal-600 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-teal-500 dark:hover:text-teal-400"
                     >
                       Set all to {value}
                     </button>
@@ -396,7 +396,7 @@ export default function MealsForm({
           <div className="mt-6 overflow-x-auto">
             <table className="min-w-[640px] border-separate border-spacing-y-2">
               <thead>
-                <tr className="text-left text-sm text-slate-500">
+                <tr className="text-left text-sm text-slate-500 dark:text-slate-400">
                   <th className="px-3 py-2">Member</th>
                   <th className="px-3 py-2">Own Meal</th>
                   <th className="px-3 py-2">Guest Meal</th>
@@ -409,7 +409,7 @@ export default function MealsForm({
                   <tr>
                     <td
                       colSpan={5}
-                      className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500"
+                      className="rounded-2xl bg-slate-50 px-3 py-4 text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400"
                     >
                       No active members found.
                     </td>
@@ -425,12 +425,12 @@ export default function MealsForm({
                     const alreadySaved = Boolean(existingForDate[member.id]);
 
                     return (
-                      <tr key={member.id} className="bg-slate-50 text-sm">
+                      <tr key={member.id} className="bg-slate-50 text-sm dark:bg-slate-800/60 dark:text-slate-200">
                         <td className="rounded-l-2xl px-3 py-3">
-                          <span className="font-semibold text-slate-900">
+                          <span className="font-semibold text-slate-900 dark:text-white">
                             {member.full_name}
                           </span>
-                          <span className="ml-2 text-xs capitalize text-slate-500">
+                          <span className="ml-2 text-xs capitalize text-slate-500 dark:text-slate-400">
                             {member.role}
                           </span>
                         </td>
@@ -443,7 +443,7 @@ export default function MealsForm({
                             onChange={(e) =>
                               updateInput(member.id, "own", e.target.value)
                             }
-                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600"
+                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                           />
                         </td>
                         <td className="px-3 py-3">
@@ -455,18 +455,18 @@ export default function MealsForm({
                             onChange={(e) =>
                               updateInput(member.id, "guest", e.target.value)
                             }
-                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600"
+                            className="w-24 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                           />
                         </td>
-                        <td className="px-3 py-3 font-semibold text-slate-900">
+                        <td className="px-3 py-3 font-semibold text-slate-900 dark:text-white">
                           {rowTotal.toFixed(1)}
                         </td>
                         <td className="rounded-r-2xl px-3 py-3">
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-medium ${
                               alreadySaved
-                                ? "bg-green-100 text-green-700"
-                                : "bg-slate-200 text-slate-600"
+                                ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                                : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                             }`}
                           >
                             {alreadySaved ? "Saved" : "New"}
@@ -480,7 +480,7 @@ export default function MealsForm({
             </table>
           </div>
 
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
             Note: Everyone defaults to 0. Enter each member&apos;s meals, then
             save once — members already saved on this date will be updated.
           </p>
@@ -489,23 +489,23 @@ export default function MealsForm({
             <button
               onClick={handleSaveAll}
               disabled={loading || !entryDate || members.length === 0}
-              className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               {loading ? "Saving..." : "Save All Meals"}
             </button>
           </div>
 
-          {msg ? <p className="mt-4 text-sm text-slate-700">{msg}</p> : null}
+          {msg ? <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">{msg}</p> : null}
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               {canManageMeals ? "Member-wise Meal History" : "My Meal History"}
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               {canManageMeals
                 ? "Each member's date-wise meal history for easy tracking."
                 : "Your own history with overall mess meal summary."}
@@ -514,26 +514,26 @@ export default function MealsForm({
 
           {!canManageMeals ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   My Total Meals
                 </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
+                <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                   {myTotals.total.toFixed(1)}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Own: {myTotals.own.toFixed(1)} | Guest: {myTotals.guest.toFixed(1)}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-teal-700">
+              <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 dark:border-teal-900/60 dark:bg-teal-950/40">
+                <p className="text-xs font-medium uppercase tracking-wide text-teal-700 dark:text-teal-300">
                   Mess Total Meals
                 </p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
+                <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                   {messTotals.total.toFixed(1)}
                 </p>
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                   Own: {messTotals.own.toFixed(1)} | Guest: {messTotals.guest.toFixed(1)}
                 </p>
               </div>
@@ -545,34 +545,34 @@ export default function MealsForm({
           {memberHistory.map(({ member, history, totalOwn, totalGuest, totalMeals }) => (
             <div
               key={member.id}
-              className="rounded-3xl border border-slate-200 bg-slate-50 p-5"
+              className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/40"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {member.full_name}
                   </h3>
-                  <p className="text-sm capitalize text-slate-500">
+                  <p className="text-sm capitalize text-slate-500 dark:text-slate-400">
                     Role: {member.role}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-                    <p className="text-xs text-slate-500">Own</p>
-                    <p className="text-sm font-bold text-slate-900">
+                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Own</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                       {totalOwn.toFixed(1)}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-                    <p className="text-xs text-slate-500">Guest</p>
-                    <p className="text-sm font-bold text-slate-900">
+                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Guest</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                       {totalGuest.toFixed(1)}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-                    <p className="text-xs text-slate-500">Total</p>
-                    <p className="text-sm font-bold text-slate-900">
+                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                       {totalMeals.toFixed(1)}
                     </p>
                   </div>
@@ -582,7 +582,7 @@ export default function MealsForm({
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-y-2">
                   <thead>
-                    <tr className="text-left text-xs text-slate-500">
+                    <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
                       <th className="px-3 py-2 font-medium">Date</th>
                       <th className="px-3 py-2 font-medium">Own</th>
                       <th className="px-3 py-2 font-medium">Guest</th>
@@ -597,7 +597,7 @@ export default function MealsForm({
                       <tr>
                         <td
                           colSpan={canManageMeals ? 5 : 4}
-                          className="rounded-2xl bg-white px-3 py-4 text-sm text-slate-500"
+                          className="rounded-2xl bg-white px-3 py-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400"
                         >
                           No meal history found.
                         </td>
@@ -613,7 +613,7 @@ export default function MealsForm({
                         return (
                           <tr
                             key={item.id}
-                            className="bg-white text-sm text-slate-700"
+                            className="bg-white text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300"
                           >
                             <td className="rounded-l-2xl px-3 py-3">
                               {item.meal_date}
@@ -626,7 +626,7 @@ export default function MealsForm({
                                   step="0.5"
                                   value={historyOwn}
                                   onChange={(e) => setHistoryOwn(e.target.value)}
-                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600"
+                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 />
                               ) : (
                                 Number(item.own_meal || 0).toFixed(1)
@@ -642,14 +642,14 @@ export default function MealsForm({
                                   onChange={(e) =>
                                     setHistoryGuest(e.target.value)
                                   }
-                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600"
+                                  className="w-20 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 />
                               ) : (
                                 Number(item.guest_meal || 0).toFixed(1)
                               )}
                             </td>
                             <td
-                              className={`px-3 py-3 font-semibold text-slate-900 ${canManageMeals ? "" : "rounded-r-2xl"
+                              className={`px-3 py-3 font-semibold text-slate-900 dark:text-white ${canManageMeals ? "" : "rounded-r-2xl"
                                 }`}
                             >
                               {total.toFixed(1)}
@@ -670,7 +670,7 @@ export default function MealsForm({
                                       <button
                                         onClick={cancelHistoryEdit}
                                         disabled={historyLoading}
-                                        className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                                       >
                                         Cancel
                                       </button>
@@ -678,7 +678,7 @@ export default function MealsForm({
                                   ) : (
                                     <button
                                       onClick={() => startHistoryEdit(item)}
-                                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                      className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                                     >
                                       Edit
                                     </button>
@@ -698,7 +698,7 @@ export default function MealsForm({
         </div>
 
         {msg && !canManageMeals ? (
-          <p className="mt-4 text-sm text-slate-700">{msg}</p>
+          <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">{msg}</p>
         ) : null}
       </section>
     </div>

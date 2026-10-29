@@ -161,22 +161,22 @@ function StatBox({
 }) {
   const accentText =
     accent === "teal"
-      ? "text-teal-700"
+      ? "text-teal-700 dark:text-teal-400"
       : accent === "amber"
-      ? "text-amber-600"
+      ? "text-amber-600 dark:text-amber-400"
       : accent === "green"
-      ? "text-green-700"
+      ? "text-green-700 dark:text-green-400"
       : accent === "red"
-      ? "text-red-700"
-      : "text-slate-900";
+      ? "text-red-700 dark:text-red-400"
+      : "text-slate-900 dark:text-white";
 
   return (
-    <div className="report-avoid-break rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+    <div className="report-avoid-break rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
       </p>
       <p className={`mt-1 text-lg font-bold ${accentText}`}>{value}</p>
-      {sub ? <p className="mt-0.5 text-[10px] text-slate-400">{sub}</p> : null}
+      {sub ? <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">{sub}</p> : null}
     </div>
   );
 }
@@ -197,10 +197,10 @@ function ShareBar({
   return (
     <div className="report-avoid-break">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-700">{label}</span>
-        <span className="text-slate-500">{valueLabel}</span>
+        <span className="font-medium text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="text-slate-500 dark:text-slate-400">{valueLabel}</span>
       </div>
-      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
         <div
           className="h-full rounded-full"
           style={{ width: `${width}%`, backgroundColor: color }}
@@ -219,7 +219,7 @@ function TrendChart({
 }) {
   if (points.length < 2) {
     return (
-      <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+      <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
         Not enough history yet — the trend appears once at least two months are
         closed.
       </p>
@@ -259,7 +259,8 @@ function TrendChart({
                 y1={gy}
                 x2={W - padR}
                 y2={gy}
-                stroke="#e2e8f0"
+                stroke="currentColor"
+                className="text-slate-200 dark:text-slate-800"
                 strokeWidth="1"
               />
               <text
@@ -267,7 +268,8 @@ function TrendChart({
                 y={gy + 3}
                 textAnchor="end"
                 fontSize="9"
-                fill="#94a3b8"
+                fill="currentColor"
+                className="text-slate-400 dark:text-slate-500"
               >
                 {(maxVal * g).toFixed(1)}
               </text>
@@ -293,7 +295,8 @@ function TrendChart({
               textAnchor="middle"
               fontSize="9"
               fontWeight="700"
-              fill="#0f172a"
+              fill="currentColor"
+              className="text-slate-900 dark:text-slate-100"
             >
               {p.value.toFixed(1)}
             </text>
@@ -302,7 +305,8 @@ function TrendChart({
               y={H - padB + 16}
               textAnchor="middle"
               fontSize="9"
-              fill="#64748b"
+              fill="currentColor"
+              className="text-slate-500 dark:text-slate-400"
             >
               {p.label}
             </text>
@@ -635,15 +639,15 @@ export default function ReportsView({
   return (
     <div className="space-y-6">
       {/* Controls — screen only, hidden from the printed report. */}
-      <div className="print:hidden flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+      <div className="print:hidden flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between dark:border-slate-800 dark:bg-slate-900">
         <div className="w-full sm:w-[260px]">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Select Month
           </label>
           <select
             value={selectedMonthId}
             onChange={(e) => handleMonthChange(e.target.value)}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-600"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
           >
             {months.map((month) => (
               <option key={month.id} value={month.id}>
@@ -659,13 +663,13 @@ export default function ReportsView({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             Role: {viewerRole} {canExport ? "· Export allowed" : "· View only"}
           </span>
           {canExport ? (
             <button
               onClick={() => window.print()}
-              className="rounded-2xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
+              className="rounded-2xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 shadow-sm"
             >
               Print / Save PDF
             </button>
@@ -674,31 +678,31 @@ export default function ReportsView({
       </div>
 
       {!canExport ? (
-        <div className="print:hidden rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+        <div className="print:hidden rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
           Only admin can print or save the PDF. Others can view the report only.
         </div>
       ) : null}
 
       {/* Report header — the PDF cover heading. */}
-      <div className="report-avoid-break overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="report-avoid-break overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="bg-teal-700 px-6 py-8 text-center text-white">
           <h1 className="text-3xl font-extrabold tracking-tight">{messName}</h1>
           <p className="mt-1 text-sm font-medium text-teal-100">
             Monthly Settlement Report
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 px-6 py-3 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 px-6 py-3 text-sm text-slate-600 dark:text-slate-300">
           <span>
-            <b className="text-slate-800">Month:</b> {monthLabel}
+            <b className="text-slate-800 dark:text-white">Month:</b> {monthLabel}
           </span>
           <span>
-            <b className="text-slate-800">Status:</b> {statusChip}
+            <b className="text-slate-800 dark:text-white">Status:</b> {statusChip}
           </span>
           <span>
-            <b className="text-slate-800">Members:</b> {rows.length}
+            <b className="text-slate-800 dark:text-white">Members:</b> {rows.length}
           </span>
           <span>
-            <b className="text-slate-800">Generated:</b> {generatedAt}
+            <b className="text-slate-800 dark:text-white">Generated:</b> {generatedAt}
           </span>
         </div>
       </div>
@@ -706,123 +710,123 @@ export default function ReportsView({
       {isMemberView ? (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Meal Rate</p>
-              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Meal Rate</p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                 {money2(mealRate)}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {monthLabel} meal rate
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">My Final Status</p>
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">My Final Status</p>
               <h3
                 className={`mt-2 text-2xl font-bold ${
-                  myRow.rawFinalBalance >= 0 ? "text-green-700" : "text-red-700"
+                  myRow.rawFinalBalance >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
                 }`}
               >
                 {myRow.rawFinalBalance >= 0 ? "+" : "-"}
                 {money(Math.abs(myRow.rawFinalBalance))}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {myRow.rawFinalBalance >= 0
                   ? "You will receive (+ve)"
                   : "You will pay (-ve)"}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Paid Amount</p>
-              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Paid Amount</p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                 {money2(myRow.paidAmount)}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {isClosedMonth
                   ? "Updated from payment"
                   : "Available after month close"}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Remaining</p>
-              <h3 className="mt-2 text-2xl font-bold text-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Remaining</p>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                 {money2(myRow.remaining)}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {myRow.settlementStatus}
               </p>
             </div>
           </div>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 My Monthly Summary
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 You can view your own report details and payment-based
                 settlement status.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Own Meal</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Own Meal</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {num1(myRow.ownMeal)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Guest Meal</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Guest Meal</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {num1(myRow.guestMeal)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Total Meal</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total Meal</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {num1(myRow.totalMeal)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Bazar Paid</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Bazar Paid</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {money(myRow.bazarPaid)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Meal Cost</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Meal Cost</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {money2(myRow.mealCost)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Shared Share</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Shared Share</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {money2(myRow.sharedShare)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">All Charges</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">All Charges</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {money2(myRow.chargesTotal)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Payment Summary</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Payment Summary</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {myRow.settlementStatus}
                 </h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Paid: {money2(myRow.paidAmount)} · Remaining:{" "}
                   {money2(myRow.remaining)}
                 </p>
@@ -830,10 +834,10 @@ export default function ReportsView({
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Charges Status</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Charges Status</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Charge categories for this month.
               </p>
             </div>
@@ -841,7 +845,7 @@ export default function ReportsView({
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-y-3">
                 <thead>
-                  <tr className="text-left text-sm text-slate-500">
+                  <tr className="text-left text-sm text-slate-500 dark:text-slate-400">
                     <th className="px-3 py-2 font-medium">Category</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 font-medium">Amount</th>
@@ -855,44 +859,44 @@ export default function ReportsView({
                     return (
                       <tr
                         key={item.key}
-                        className="bg-slate-50 text-sm text-slate-700"
+                        className="bg-slate-50 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
                       >
-                        <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                        <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900 dark:text-white">
                           {item.label}
                         </td>
                         <td className="px-3 py-4">
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-medium ${
                               added
-                                ? "bg-green-100 text-green-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                             }`}
                           >
                             {added ? "Added" : "Not Added"}
                           </span>
                         </td>
-                        <td className="rounded-r-2xl px-3 py-4">
+                        <td className="rounded-r-2xl px-3 py-4 font-medium text-slate-900 dark:text-white">
                           {money(amount)}
                         </td>
                       </tr>
                     );
                   })}
-                  <tr className="bg-slate-50 text-sm text-slate-700">
-                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900">
+                  <tr className="bg-slate-50 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+                    <td className="rounded-l-2xl px-3 py-4 font-semibold text-slate-900 dark:text-white">
                       Shared Expense
                     </td>
                     <td className="px-3 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           totalSharedBills > 0
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                         }`}
                       >
                         {totalSharedBills > 0 ? "Added" : "Not Added"}
                       </span>
                     </td>
-                    <td className="rounded-r-2xl px-3 py-4">
+                    <td className="rounded-r-2xl px-3 py-4 font-medium text-slate-900 dark:text-white">
                       {money(totalSharedBills)}
                     </td>
                   </tr>
@@ -928,37 +932,37 @@ export default function ReportsView({
 
           {/* Highlights. */}
           {rows.length > 0 ? (
-            <div className="report-avoid-break grid grid-cols-1 gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
-              <div className="rounded-2xl bg-teal-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+            <div className="report-avoid-break grid grid-cols-1 gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 dark:border-slate-800 dark:bg-slate-900">
+              <div className="rounded-2xl bg-teal-50 p-4 dark:bg-teal-950/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
                   Top Meal
                 </p>
-                <p className="mt-1 text-base font-bold text-slate-900">
+                <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
                   {topMeal.name}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {num1(topMeal.totalMeal)} meals
                 </p>
               </div>
-              <div className="rounded-2xl bg-amber-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              <div className="rounded-2xl bg-amber-50 p-4 dark:bg-amber-950/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                   Top Bazar Contributor
                 </p>
-                <p className="mt-1 text-base font-bold text-slate-900">
+                <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
                   {topBazar.name}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {money(topBazar.bazarPaid)}
                 </p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                   Cost / Meal
                 </p>
-                <p className="mt-1 text-base font-bold text-slate-900">
+                <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
                   {money2(mealRate)}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {rateDeltaPct === null
                     ? "no previous month"
                     : `${rateDeltaPct >= 0 ? "▲ +" : "▼ "}${rateDeltaPct.toFixed(
@@ -970,12 +974,12 @@ export default function ReportsView({
           ) : null}
 
           {/* Final settlement — the detailed table. */}
-          <div className="report-break-before rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="report-break-before rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-5">
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 Final Settlement
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Final = Bazar Paid − (Meal Cost + Shared Bill + House Rent +
                 Other Charges). (+ve) = will receive, (-ve) = will pay.
               </p>
@@ -984,7 +988,7 @@ export default function ReportsView({
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                     <th className="px-2 py-2 font-semibold">Name</th>
                     <th className="px-2 py-2 text-right font-semibold">Own</th>
                     <th className="px-2 py-2 text-right font-semibold">Guest</th>
@@ -1008,9 +1012,9 @@ export default function ReportsView({
                     return (
                       <tr
                         key={row.id}
-                        className="border-b border-slate-100 text-slate-700"
+                        className="border-b border-slate-100 text-slate-700 dark:border-slate-800/80 dark:text-slate-300"
                       >
-                        <td className="px-2 py-3 font-semibold text-slate-900">
+                        <td className="px-2 py-3 font-semibold text-slate-900 dark:text-white">
                           {row.name}
                         </td>
                         <td className="px-2 py-3 text-right">
@@ -1039,7 +1043,7 @@ export default function ReportsView({
                         </td>
                         <td
                           className={`px-2 py-3 text-right font-bold ${
-                            receive ? "text-green-700" : "text-red-700"
+                            receive ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
                           }`}
                         >
                           {receive ? "+" : "-"}৳{" "}
@@ -1047,7 +1051,7 @@ export default function ReportsView({
                         </td>
                         <td
                           className={`px-2 py-3 font-semibold ${
-                            receive ? "text-green-700" : "text-red-700"
+                            receive ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
                           }`}
                         >
                           {receive ? "Will Receive" : "Will Pay"}
@@ -1058,7 +1062,7 @@ export default function ReportsView({
                 </tbody>
 
                 <tfoot>
-                  <tr className="border-t-2 border-slate-300 font-bold text-slate-900">
+                  <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-700 dark:text-white">
                     <td className="px-2 py-3">Total</td>
                     <td className="px-2 py-3 text-right">
                       {num1(rows.reduce((s, r) => s + r.ownMeal, 0))}
@@ -1088,30 +1092,30 @@ export default function ReportsView({
 
 
           {/* Overall / balance check. */}
-          <section className="report-avoid-break space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">Overall Check</h2>
+          <section className="report-avoid-break space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Overall Check</h2>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
-                <p className="text-sm text-green-700">Total Will Receive</p>
-                <h3 className="mt-2 text-2xl font-bold text-green-700">
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-900/60 dark:bg-green-950/40">
+                <p className="text-sm text-green-700 dark:text-green-300">Total Will Receive</p>
+                <h3 className="mt-2 text-2xl font-bold text-green-700 dark:text-green-400">
                   {money2(totalWillReceive)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                <p className="text-sm text-red-700">Total Will Pay</p>
-                <h3 className="mt-2 text-2xl font-bold text-red-700">
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40">
+                <p className="text-sm text-red-700 dark:text-red-300">Total Will Pay</p>
+                <h3 className="mt-2 text-2xl font-bold text-red-700 dark:text-red-400">
                   {money2(totalWillPay)}
                 </h3>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-500">Total Charges</p>
-                <h3 className="mt-2 text-2xl font-bold text-slate-900">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total Charges</p>
+                <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                   {money2(totalCharges)}
                 </h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Shared + Charges + Will Receive
                 </p>
               </div>
@@ -1120,27 +1124,27 @@ export default function ReportsView({
             <div
               className={`rounded-2xl border p-5 shadow-sm ${
                 isBalanced
-                  ? "border-green-200 bg-green-50"
-                  : "border-red-200 bg-red-50"
+                  ? "border-green-200 bg-green-50 dark:border-green-900/60 dark:bg-green-950/40"
+                  : "border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/40"
               }`}
             >
               <p
                 className={`text-sm font-semibold ${
-                  isBalanced ? "text-green-700" : "text-red-700"
+                  isBalanced ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"
                 }`}
               >
                 Balance Check: {isBalanced ? "Balanced ✅" : "Not Balanced ❌"}
               </p>
               <p
                 className={`mt-2 text-sm ${
-                  isBalanced ? "text-green-700" : "text-red-700"
+                  isBalanced ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"
                 }`}
               >
                 Total Charge = {money2(totalCharges)} · All members Will Pay ={" "}
                 {money2(totalWillPay)}
               </p>
               {!isBalanced ? (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   Difference: {money2(balanceDifference)}. Meal, bazar, shared
                   bill, or charges data check koro.
                 </p>
@@ -1149,24 +1153,24 @@ export default function ReportsView({
           </section>
 
           {/* Analysis: cost-per-meal trend + meal share + bazar contribution. */}
-          <section className="report-avoid-break space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="report-avoid-break space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Analysis</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Analysis</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Cost-per-meal trend, meal share and bazar contribution.
               </p>
             </div>
 
             <div>
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-sm font-semibold text-slate-800">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                   Cost per Meal — last {trendPoints.length} month
                   {trendPoints.length === 1 ? "" : "s"}
                 </h3>
                 {rateDeltaPct !== null ? (
                   <span
                     className={`text-xs font-semibold ${
-                      rateDeltaPct >= 0 ? "text-red-600" : "text-green-600"
+                      rateDeltaPct >= 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                     }`}
                   >
                     {rateDeltaPct >= 0 ? "▲ +" : "▼ "}
@@ -1179,7 +1183,7 @@ export default function ReportsView({
 
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-800">
+                <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
                   Meal Share by Member
                 </h3>
                 <div className="space-y-2.5">
@@ -1200,7 +1204,7 @@ export default function ReportsView({
               </div>
 
               <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-800">
+                <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
                   Bazar Contribution by Member
                 </h3>
                 <div className="space-y-2.5">
@@ -1223,17 +1227,17 @@ export default function ReportsView({
           </section>
 
           {/* Meal summary — SS-1 style day-by-day grid, one "Meal" row per member. */}
-          <section className="report-break-before rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="report-break-before rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                   Meal Summary
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Day-by-day meals per member for {monthLabel} (own + guest).
                 </p>
               </div>
-              <p className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-700">
+              <p className="rounded-full bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
                 Grand Total Meals: {totalMealFmt(mealGridGrandTotal)}
               </p>
             </div>
@@ -1241,20 +1245,20 @@ export default function ReportsView({
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-[10px]">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-600">
-                    <th className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold">
+                  <tr className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <th className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200">
                       Member
                     </th>
-                    <th className="border border-slate-200 px-1.5 py-1.5 font-semibold">
+                    <th className="border border-slate-200 px-1.5 py-1.5 font-semibold dark:border-slate-800">
                       Type
                     </th>
-                    <th className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold">
+                    <th className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold dark:border-slate-800">
                       Total
                     </th>
                     {dayNumbers.map((day) => (
                       <th
                         key={day}
-                        className="border border-slate-200 px-1 py-1.5 text-center font-semibold"
+                        className="border border-slate-200 px-1 py-1.5 text-center font-semibold dark:border-slate-800"
                       >
                         {day}
                       </th>
@@ -1263,20 +1267,20 @@ export default function ReportsView({
                 </thead>
                 <tbody>
                   {mealGridRows.map((row) => (
-                    <tr key={row.id} className="text-slate-700">
-                      <td className="sticky left-0 z-10 whitespace-nowrap border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-900">
+                    <tr key={row.id} className="text-slate-700 dark:text-slate-300">
+                      <td className="sticky left-0 z-10 whitespace-nowrap border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                         {row.name}
                       </td>
-                      <td className="border border-slate-200 px-1.5 py-1.5 text-center text-slate-500">
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-center text-slate-500 dark:border-slate-800 dark:text-slate-400">
                         Meal
                       </td>
-                      <td className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold text-slate-900">
+                      <td className="border border-slate-200 px-1.5 py-1.5 text-right font-semibold text-slate-900 dark:border-slate-800 dark:text-white">
                         {totalMealFmt(row.rowTotal)}
                       </td>
                       {row.dayValues.map((value, index) => (
                         <td
                           key={index}
-                          className="border border-slate-200 px-1 py-1.5 text-center"
+                          className="border border-slate-200 px-1 py-1.5 text-center dark:border-slate-800"
                         >
                           {cellMeal(value)}
                         </td>
@@ -1285,12 +1289,12 @@ export default function ReportsView({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-50 font-bold text-slate-900">
-                    <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <tr className="bg-slate-50 font-bold text-slate-900 dark:bg-slate-800 dark:text-white">
+                    <td className="sticky left-0 z-10 border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-800">
                       Grand Total
                     </td>
-                    <td className="border border-slate-200 px-1.5 py-1.5" />
-                    <td className="border border-slate-200 px-1.5 py-1.5 text-right">
+                    <td className="border border-slate-200 px-1.5 py-1.5 dark:border-slate-800" />
+                    <td className="border border-slate-200 px-1.5 py-1.5 text-right dark:border-slate-800">
                       {totalMealFmt(mealGridGrandTotal)}
                     </td>
                     {dayNumbers.map((day, index) => {
@@ -1301,7 +1305,7 @@ export default function ReportsView({
                       return (
                         <td
                           key={day}
-                          className="border border-slate-200 px-1 py-1.5 text-center"
+                          className="border border-slate-200 px-1 py-1.5 text-center dark:border-slate-800"
                         >
                           {cellMeal(dayTotal)}
                         </td>
@@ -1313,13 +1317,11 @@ export default function ReportsView({
             </div>
           </section>
 
-          
-
           {/* Charges status. */}
-          <section className="report-avoid-break rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="report-avoid-break rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Charges Status</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Charges Status</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Missing categories are shown as not added and treated as 0 in
                 this report.
               </p>
@@ -1328,7 +1330,7 @@ export default function ReportsView({
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                     <th className="px-3 py-2 font-semibold">Category</th>
                     <th className="px-3 py-2 font-semibold">Status</th>
                     <th className="px-3 py-2 text-right font-semibold">Amount</th>
@@ -1342,44 +1344,44 @@ export default function ReportsView({
                     return (
                       <tr
                         key={item.key}
-                        className="border-b border-slate-100 text-slate-700"
+                        className="border-b border-slate-100 text-slate-700 dark:border-slate-800/80 dark:text-slate-300"
                       >
-                        <td className="px-3 py-2.5 font-semibold text-slate-900">
+                        <td className="px-3 py-2.5 font-semibold text-slate-900 dark:text-white">
                           {item.label}
                         </td>
                         <td className="px-3 py-2.5">
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-medium ${
                               added
-                                ? "bg-green-100 text-green-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                             }`}
                           >
                             {added ? "Added" : "Not Added"}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-right">
+                        <td className="px-3 py-2.5 text-right font-medium text-slate-900 dark:text-white">
                           {money(amount)}
                         </td>
                       </tr>
                     );
                   })}
-                  <tr className="border-b border-slate-100 text-slate-700">
-                    <td className="px-3 py-2.5 font-semibold text-slate-900">
+                  <tr className="border-b border-slate-100 text-slate-700 dark:border-slate-800/80 dark:text-slate-300">
+                    <td className="px-3 py-2.5 font-semibold text-slate-900 dark:text-white">
                       Shared Expense
                     </td>
                     <td className="px-3 py-2.5">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           totalSharedBills > 0
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                         }`}
                       >
                         {totalSharedBills > 0 ? "Added" : "Not Added"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-right font-medium text-slate-900 dark:text-white">
                       {money(totalSharedBills)}
                     </td>
                   </tr>

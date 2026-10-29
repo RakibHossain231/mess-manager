@@ -402,7 +402,7 @@ export default function MembersManager({
   ) => {
     return (
       <div key={key}>
-        <label className="mb-2 block text-sm font-medium text-slate-700">
+        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
           {chargeLabels[key]}
         </label>
         <input
@@ -412,7 +412,7 @@ export default function MembersManager({
           onChange={(e) =>
             onChange({ ...current, [key]: Number(e.target.value || 0) })
           }
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
     );
@@ -425,65 +425,65 @@ export default function MembersManager({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Members</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Members</h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
           Member info, status, and current month rent. Current month:{" "}
           <b>{monthYear}</b>
         </p>
       </div>
 
       {isAdmin ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">Add New Member</h2>
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add New Member</h2>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Name
               </label>
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="Required"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Mobile Number
               </label>
               <input
                 type="text"
                 value={newMobile}
                 onChange={(e) => setNewMobile(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="Required"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 NID Number
               </label>
               <input
                 type="text"
                 value={newNid}
                 onChange={(e) => setNewNid(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 placeholder="Optional"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Role
               </label>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as Role)}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="admin">Admin</option>
                 <option value="manager">Manager</option>
@@ -494,7 +494,7 @@ export default function MembersManager({
 
           {/* Default monthly charges */}
           <div className="mt-5">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">
+            <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
               Default Monthly Charges
             </h3>
             <div className="grid gap-4 md:grid-cols-4">{defaultChargeFields}</div>
@@ -504,7 +504,7 @@ export default function MembersManager({
             <button
               onClick={handleAddMember}
               disabled={!isAdmin || addLoading}
-              className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               {addLoading ? "Adding..." : "Add Member"}
             </button>
@@ -512,18 +512,18 @@ export default function MembersManager({
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xl font-bold text-slate-900">Member Information</h2>
-          <p className="text-sm text-slate-500">
-            Current month rent: <span className="font-semibold">{monthYear}</span>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Member Information</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Current month rent: <span className="font-semibold text-slate-800 dark:text-slate-200">{monthYear}</span>
           </p>
         </div>
 
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-[1500px] border-separate border-spacing-y-3">
             <thead>
-              <tr className="text-left text-sm text-slate-500">
+              <tr className="text-left text-sm text-slate-500 dark:text-slate-400">
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Mobile</th>
                 <th className="px-3 py-2">Gmail</th>
@@ -558,7 +558,7 @@ export default function MembersManager({
 
                 return (
                   <Fragment key={member.id}>
-                    <tr className="bg-slate-50 text-sm">
+                    <tr className="bg-slate-50 text-sm dark:bg-slate-800/60 dark:text-slate-200">
                     <td className="px-3 py-3">
                       {editingId === member.id ? (
                         <input
@@ -569,10 +569,10 @@ export default function MembersManager({
                               name: e.target.value,
                             }))
                           }
-                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
                       ) : (
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-slate-900 dark:text-white">
                           {member.full_name}
                         </span>
                       )}
@@ -588,14 +588,14 @@ export default function MembersManager({
                               mobile: e.target.value,
                             }))
                           }
-                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
                       ) : (
                         member.phone
                       )}
                     </td>
 
-                    <td className="px-3 py-3 font-medium text-slate-600">
+                    <td className="px-3 py-3 font-medium text-slate-600 dark:text-slate-400">
                       {member.email || "-"}
                     </td>
 
@@ -609,7 +609,7 @@ export default function MembersManager({
                               nid: e.target.value,
                             }))
                           }
-                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         />
                       ) : (
                         member.nid || "-"
@@ -626,7 +626,7 @@ export default function MembersManager({
                               role: e.target.value as Role,
                             }))
                           }
-                          className="rounded-xl border border-slate-300 bg-white px-3 py-2"
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         >
                           <option value="admin">Admin</option>
                           <option value="manager">Manager</option>
@@ -643,7 +643,7 @@ export default function MembersManager({
                         className="px-3 py-3 text-right whitespace-nowrap"
                       >
                         {isEditingRow ? (
-                          <span className="font-medium text-teal-700">
+                          <span className="font-medium text-teal-700 dark:text-teal-400">
                             ৳ {Number(displayCharges[key]).toFixed(0)}
                           </span>
                         ) : (
@@ -652,7 +652,7 @@ export default function MembersManager({
                       </td>
                     ))}
 
-                    <td className="px-3 py-3 text-right whitespace-nowrap font-semibold text-slate-900">
+                    <td className="px-3 py-3 text-right whitespace-nowrap font-semibold text-slate-900 dark:text-white">
                       ৳ {rowTotal.toFixed(0)}
                     </td>
 
@@ -660,10 +660,10 @@ export default function MembersManager({
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           member.status === "active"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
                             : member.status === "pending"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-slate-200 text-slate-700"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
+                              : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
                         }`}
                       >
                         {member.status}
@@ -685,7 +685,7 @@ export default function MembersManager({
                               <button
                                 onClick={cancelEdit}
                                 disabled={loadingId === member.id}
-                                className="rounded-xl bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-xl bg-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-700 dark:text-slate-200"
                               >
                                 Cancel
                               </button>
@@ -709,8 +709,8 @@ export default function MembersManager({
                                 }
                                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
                                   member.status === "active"
-                                    ? "border border-red-200 bg-red-50 text-red-600"
-                                    : "border border-green-200 bg-green-50 text-green-700"
+                                    ? "border border-red-200 bg-red-50 text-red-600 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
+                                    : "border border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-400"
                                 }`}
                               >
                                 {member.status === "active" ? "Mark Left" : "Activate"}
@@ -719,16 +719,16 @@ export default function MembersManager({
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-500">View only</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">View only</span>
                       )}
                     </td>
                     </tr>
 
                     {editingId === member.id ? (
-                      <tr className="bg-slate-50">
+                      <tr className="bg-slate-50 dark:bg-slate-800/60">
                         <td colSpan={16} className="px-3 pb-4">
-                          <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4">
-                            <h4 className="mb-3 text-sm font-semibold text-slate-700">
+                          <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4 dark:border-teal-900/60 dark:bg-teal-950/30">
+                            <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
                               Monthly Charges — {member.full_name}
                             </h4>
                             <div className="grid gap-4 md:grid-cols-4">
@@ -744,7 +744,7 @@ export default function MembersManager({
                                 )
                               )}
                             </div>
-                            <p className="mt-3 text-xs text-slate-500">
+                            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                               These values are saved to the member&apos;s
                               defaults and to the current open month.
                             </p>
@@ -759,7 +759,7 @@ export default function MembersManager({
           </table>
         </div>
 
-        {msg && <p className="mt-4 text-sm text-slate-700">{msg}</p>}
+        {msg && <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">{msg}</p>}
       </section>
     </div>
   );

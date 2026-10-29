@@ -331,25 +331,25 @@ export default function ExpensesForm({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Expenses</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Expenses</h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
           Shared bills are monthly fixed fields. Bazar entries are shown member-wise.
         </p>
       </div>
 
       {isAdmin ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Monthly Shared Bills</h2>
-              <p className="mt-2 text-sm text-slate-500">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Monthly Shared Bills</h2>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Admin enters these once per month. Later they can update them.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 md:min-w-[220px]">
-              <p className="text-sm text-slate-500">Shared Bills</p>
-              <h3 className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 md:min-w-[220px] dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">Shared Bills</p>
+              <h3 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
                 ৳ {totalSharedBills.toFixed(0)}
               </h3>
             </div>
@@ -358,7 +358,7 @@ export default function ExpensesForm({
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             {sharedCategories.map((item) => (
               <div key={item.key}>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
                   {item.label}
                 </label>
                 <input
@@ -367,7 +367,7 @@ export default function ExpensesForm({
                   step="0.01"
                   value={sharedValues[item.key] || "0"}
                   onChange={(e) => updateSharedValue(item.key, e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600"
+                  className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
             ))}
@@ -377,24 +377,24 @@ export default function ExpensesForm({
             <button
               onClick={handleSaveSharedBills}
               disabled={sharedLoading}
-              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-teal-700 dark:hover:bg-teal-600 shadow-sm"
             >
               {sharedLoading ? "Saving..." : "Save Shared Bills"}
             </button>
 
-            {sharedMsg ? <p className="text-sm text-slate-700">{sharedMsg}</p> : null}
+            {sharedMsg ? <p className="text-sm text-slate-700 dark:text-slate-300">{sharedMsg}</p> : null}
           </div>
         </section>
       ) : null}
 
       {canManageBazar ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Add Bazar Entry</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add Bazar Entry</h2>
 
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
-              <p className="text-xs text-slate-500">Total Bazar</p>
-              <h3 className="text-lg font-bold text-slate-900">
+            <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Total Bazar</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 ৳ {totalBazar.toFixed(0)}
               </h3>
             </div>
@@ -402,25 +402,25 @@ export default function ExpensesForm({
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                 Date
               </label>
               <input
                 type="date"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                 Paid By
               </label>
               <select
                 value={paidByMemberId}
                 onChange={(e) => setPaidByMemberId(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-teal-600"
+                className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
@@ -431,7 +431,7 @@ export default function ExpensesForm({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                 Amount
               </label>
               <input
@@ -440,19 +440,19 @@ export default function ExpensesForm({
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
             <div className="md:col-span-2 xl:col-span-4">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                 Note
               </label>
               <textarea
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-teal-600"
+                className="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           </div>
@@ -461,29 +461,29 @@ export default function ExpensesForm({
             <button
               onClick={handleSaveBazar}
               disabled={bazarLoading}
-              className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               {bazarLoading ? "Saving..." : "Save"}
             </button>
 
             {bazarMsg && !editingBazarId ? (
-              <p className="text-xs text-slate-600">{bazarMsg}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{bazarMsg}</p>
             ) : null}
           </div>
         </section>
       ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Total Bazar</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Total Bazar</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 You can view bazar history only.
               </p>
             </div>
 
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
-              <p className="text-xs text-slate-500">Total Bazar</p>
-              <h3 className="text-lg font-bold text-slate-900">
+            <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Total Bazar</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 ৳ {totalBazar.toFixed(0)}
               </h3>
             </div>
@@ -491,12 +491,12 @@ export default function ExpensesForm({
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             Member-wise Bazar History
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isMember
               ? "You can view only your own bazar history."
               : "All members' bazar history is shown here."}
@@ -505,36 +505,36 @@ export default function ExpensesForm({
 
         <div className="mt-5 space-y-5">
           {bazarByMember.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
               No bazar entries added yet.
             </div>
           ) : (
             bazarByMember.map(({ member, items, total }) => (
               <div
                 key={member.id}
-                className="overflow-hidden rounded-2xl border border-slate-200"
+                className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800"
               >
-                <div className="flex flex-col gap-3 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800/60">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
                       {member.full_name}
                     </h3>
-                    <p className="text-sm capitalize text-slate-500">
+                    <p className="text-sm capitalize text-slate-500 dark:text-slate-400">
                       {member.role}
                     </p>
                   </div>
 
-                  <div className="rounded-xl bg-white px-4 py-2">
-                    <p className="text-xs text-slate-500">Total</p>
-                    <p className="text-lg font-bold text-slate-900">
+                  <div className="rounded-xl bg-white px-4 py-2 shadow-sm dark:bg-slate-900">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">
                       ৳ {total.toFixed(0)}
                     </p>
                   </div>
                 </div>
 
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {items.length === 0 ? (
-                    <div className="bg-white px-4 py-4 text-sm text-slate-500">
+                    <div className="bg-white px-4 py-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                       No bazar history for this member.
                     </div>
                   ) : (
@@ -545,23 +545,23 @@ export default function ExpensesForm({
                         return (
                           <div
                             key={expense.id}
-                            className="rounded-2xl bg-teal-50/40 px-4 py-4"
+                            className="rounded-2xl bg-teal-50/40 px-4 py-4 dark:bg-teal-950/30"
                           >
                             <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr_1.6fr_auto] sm:items-end">
                               <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                                   Date
                                 </label>
                                 <input
                                   type="date"
                                   value={editDate}
                                   onChange={(e) => setEditDate(e.target.value)}
-                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                                   Amount
                                 </label>
                                 <input
@@ -570,19 +570,19 @@ export default function ExpensesForm({
                                   step="0.01"
                                   value={editAmount}
                                   onChange={(e) => setEditAmount(e.target.value)}
-                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-600">
+                                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
                                   Note
                                 </label>
                                 <input
                                   type="text"
                                   value={editNote}
                                   onChange={(e) => setEditNote(e.target.value)}
-                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600"
+                                  className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                                   placeholder="No note"
                                 />
                               </div>
@@ -598,7 +598,7 @@ export default function ExpensesForm({
                                 <button
                                   onClick={cancelBazarEdit}
                                   disabled={editLoading}
-                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                                 >
                                   Cancel
                                 </button>
@@ -606,7 +606,7 @@ export default function ExpensesForm({
                             </div>
 
                             {bazarMsg ? (
-                              <p className="mt-2 text-xs text-slate-600">
+                              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
                                 {bazarMsg}
                               </p>
                             ) : null}
@@ -617,19 +617,19 @@ export default function ExpensesForm({
                       return (
                         <div
                           key={expense.id}
-                          className="rounded-2xl bg-white px-4 py-4"
+                          className="rounded-2xl bg-white px-4 py-4 dark:bg-slate-900"
                         >
                           <div className="sm:hidden space-y-2">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-semibold text-slate-900">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                 {expense.expense_date}
                               </p>
-                              <p className="text-sm font-bold text-slate-900">
+                              <p className="text-sm font-bold text-slate-900 dark:text-white">
                                 ৳ {Number(expense.amount).toFixed(0)}
                               </p>
                             </div>
 
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                               {expense.description || "No note"}
                             </p>
 
@@ -638,20 +638,20 @@ export default function ExpensesForm({
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => startBazarEdit(expense)}
-                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
+                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                   >
                                     Edit
                                   </button>
 
                                   <button
                                     onClick={() => handleDeleteBazar(expense.id)}
-                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
                                   >
                                     Delete
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
                                   View only
                                 </span>
                               )}
@@ -659,15 +659,15 @@ export default function ExpensesForm({
                           </div>
 
                           <div className="hidden sm:grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr] items-center gap-3">
-                            <p className="text-sm text-slate-800">
+                            <p className="text-sm text-slate-800 dark:text-slate-200">
                               {expense.expense_date}
                             </p>
 
-                            <p className="text-sm text-slate-800">
+                            <p className="text-sm text-slate-800 dark:text-slate-200">
                               ৳ {Number(expense.amount).toFixed(0)}
                             </p>
 
-                            <p className="truncate text-sm text-slate-600">
+                            <p className="truncate text-sm text-slate-600 dark:text-slate-400">
                               {expense.description || "No note"}
                             </p>
 
@@ -676,20 +676,20 @@ export default function ExpensesForm({
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => startBazarEdit(expense)}
-                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs"
+                                    className="rounded-lg border border-slate-300 px-3 py-1 text-xs dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                   >
                                     Edit
                                   </button>
 
                                   <button
                                     onClick={() => handleDeleteBazar(expense.id)}
-                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600"
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
                                   >
                                     Delete
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
                                   View only
                                 </span>
                               )}

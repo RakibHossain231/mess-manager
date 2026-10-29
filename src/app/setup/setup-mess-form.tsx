@@ -131,11 +131,11 @@ export default function SetupMessForm({ userId }: { userId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Mess Name
           </label>
           <input
@@ -143,19 +143,19 @@ export default function SetupMessForm({ userId }: { userId: string }) {
             value={messName}
             onChange={(e) => setMessName(e.target.value)}
             placeholder="Enter mess name"
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             required
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Mess Mode
           </label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as "managed" | "collaborative")}
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-600"
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           >
             <option value="managed">Managed</option>
             <option value="collaborative">Collaborative</option>
@@ -163,7 +163,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Payment Deadline
           </label>
           <input
@@ -172,25 +172,25 @@ export default function SetupMessForm({ userId }: { userId: string }) {
             onChange={(e) => setPaymentDeadline(e.target.value)}
             min={1}
             max={31}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Currency
           </label>
           <input
             type="text"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
         </div>
       </div>
 
       {errorText ? (
-        <p className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950/60 dark:text-red-400">
           {errorText}
         </p>
       ) : null}
@@ -199,7 +199,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-2xl bg-teal-700 px-5 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-2xl bg-teal-700 px-5 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
         >
           {loading ? "Creating..." : "Create Mess"}
         </button>
