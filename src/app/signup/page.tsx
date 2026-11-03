@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -20,8 +20,23 @@ export default function SignupPage() {
 
   // Verification state after signup
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [submittedName, setSubmittedName] = useState("");
+  const [submittedMobile, setSubmittedMobile] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(60);
+
+  // Countdown timer for resending verification
+  useEffect(() => {
+    if (!submittedEmail || resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [submittedEmail, resendCooldown]);
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -105,6 +120,11 @@ export default function SignupPage() {
     // If email confirmation is enabled on Supabase, no active session is returned
     if (!signupData.session) {
       setSubmittedEmail(cleanEmail);
+      setSubmittedName(cleanName);
+      setSubmittedMobile(cleanMobile);
+      setResendCooldown(60);
+      setOtpCode("");
+      setVerifyError("");
       setLoading(false);
       return;
     }
@@ -115,8 +135,51 @@ export default function SignupPage() {
     router.refresh();
   }
 
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanCode = otpCode.trim();
+
+    if (!cleanCode || cleanCode.length < 6) {
+      setVerifyError("Please enter the complete 6-digit verification code.");
+      return;
+    }
+
+    setVerifying(true);
+    setVerifyError("");
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: submittedEmail!,
+      token: cleanCode,
+      type: "signup",
+    });
+
+    if (error) {
+      setVerifying(false);
+      setVerifyError(error.message || "Invalid or expired code. Please try again.");
+      return;
+    }
+
+    // Ensure profile row exists in profiles table
+    if (data?.user) {
+      try {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          full_name: submittedName || "User",
+          email: submittedEmail,
+          phone: submittedMobile || null,
+        });
+      } catch (err) {
+        console.error("Profile sync error:", err);
+      }
+    }
+
+    setVerifying(false);
+    // User is now verified and logged in!
+    window.location.href = "/";
+  }
+
   async function handleResendEmail() {
-    if (!submittedEmail) return;
+    if (!submittedEmail || resendCooldown > 0) return;
     setResending(true);
     setResendStatus("");
 
@@ -137,7 +200,8 @@ export default function SignupPage() {
     if (error) {
       setResendStatus(`Failed to resend: ${error.message}`);
     } else {
-      setResendStatus("A new verification email has been sent! Check your inbox.");
+      setResendStatus("A new verification code/link has been sent! Check your inbox.");
+      setResendCooldown(60);
     }
   }
 
@@ -166,27 +230,68 @@ export default function SignupPage() {
           </div>
 
           <h1 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
-            Verify Your Email
+            Verify Your Gmail
           </h1>
 
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            We sent a verification link to:
+            We sent a verification code and link to:
           </p>
           <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
             {submittedEmail}
           </p>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
+          {/* Form to enter 6-digit OTP code directly */}
+          <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300 text-left mb-1.5">
+                Enter 6-Digit Verification Code
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                className="w-full text-center text-xl font-mono tracking-[0.35em] rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                required
+                autoFocus
+              />
+            </div>
+
+            {verifyError ? (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                {verifyError}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={verifying || otpCode.length < 6}
+              className="w-full rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+            >
+              {verifying ? "Verifying code..." : "Verify Code & Continue"}
+            </button>
+          </form>
+
+          {/* OR divider */}
+          <div className="relative my-5 flex items-center justify-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+            <span className="absolute bg-white px-3 text-xs font-semibold text-slate-400 dark:bg-slate-900">
+              OR
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
             <p className="font-semibold text-slate-800 dark:text-slate-200">
-              Follow these simple steps:
+              Verification via Link:
             </p>
-            <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-              <li>Open your Gmail or email inbox.</li>
-              <li>Click the confirmation link to activate your account.</li>
-              <li>
-                Can&apos;t find it? Check your <strong>Spam / Junk</strong> folder.
-              </li>
-            </ol>
+            <p className="mt-1">
+              You can also open your Gmail inbox and click the <strong>confirmation link</strong> directly to activate your account.
+            </p>
+            <p className="mt-1.5 text-slate-500 dark:text-slate-400">
+              Can&apos;t find it? Please check your <strong>Spam / Junk</strong> folder.
+            </p>
           </div>
 
           {resendStatus ? (
@@ -195,33 +300,41 @@ export default function SignupPage() {
             </p>
           ) : null}
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-5 space-y-3">
             <button
               type="button"
               onClick={handleResendEmail}
-              disabled={resending}
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
+              disabled={resending || resendCooldown > 0}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
             >
-              {resending ? "Resending email..." : "Resend Verification Email"}
+              {resending
+                ? "Resending..."
+                : resendCooldown > 0
+                ? `Resend code in ${resendCooldown}s`
+                : "Resend Verification Code / Email"}
             </button>
 
             <Link
               href="/login"
-              className="block w-full rounded-2xl bg-teal-700 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-teal-800 shadow-sm"
+              className="block text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
             >
               Back to Login
             </Link>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSubmittedEmail(null);
-                setResendStatus("");
-              }}
-              className="text-xs text-slate-500 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              Entered wrong email? Change email
-            </button>
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmittedEmail(null);
+                  setResendStatus("");
+                  setVerifyError("");
+                  setOtpCode("");
+                }}
+                className="text-xs text-slate-500 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Entered wrong email? Change email
+              </button>
+            </div>
           </div>
         </div>
       </main>
