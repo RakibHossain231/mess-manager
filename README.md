@@ -100,28 +100,6 @@ This project was built with a focus on **usability, real-world logic, and clean 
 
 ---
 
-## ⚙️ Installation & Setup
-
-### 1️⃣ Clone Repository
-```bash
-git clone https://github.com/RakibHossain231/mess-manager.git
-cd mess-manager
-```
-### 2️⃣ Install Dependencies
-```bash
-npm install
-```
-### 3️⃣ Setup Environment Variables
-Create a ***.env.local* file and add:
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://netfcyimtrtlvhnvnuaw.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_YBVkhQR3Ser8nCk3p6qAFw_P5hvF73U
-```
-### 4️⃣ Run Locally
-```bash
-npm run dev
-```
-
 ## 👨‍💻 Author
 
 ### Rakib Hossain
