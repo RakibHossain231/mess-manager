@@ -272,16 +272,63 @@ export default function ProfileDetailsCard({
     setSaving(true);
 
     try {
-      const isEmailChanging = trimmedEmail !== (email || "");
+      // 1. Update members table
+      const { error: memberError } = await supabase
+        .from("members")
+        .update({
+          full_name: trimmedName,
+          email: trimmedEmail,
+          phone: trimmedMobile,
+          nid: trimmedNid || null,
+        })
+        .eq("id", memberId);
+
+      if (memberError) {
+        setSaving(false);
+        setMessage(memberError.message);
+        return;
+      }
+
+      // 2. Update profiles table if userId is present
+      if (userId) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: trimmedName,
+            email: trimmedEmail,
+            phone: trimmedMobile,
+          })
+          .eq("id", userId);
+
+        if (profileError) {
+          console.error("Profile update error:", profileError);
+        }
+      }
+
+      // 3. If admin, update mess_groups table
+      if (isAdmin && groupId && trimmedMessName) {
+        const { error: groupError } = await supabase
+          .from("mess_groups")
+          .update({
+            name: trimmedMessName,
+          })
+          .eq("id", groupId);
+
+        if (groupError) {
+          setSaving(false);
+          setMessage(`Failed to update mess name: ${groupError.message}`);
+          return;
+        }
+      }
+
+      // 4. Update Supabase Auth user (email and metadata)
       let finalMessage = "Profile updated successfully.";
       let shouldReload = true;
-      let effectiveEmail = email || "";
 
-      // 1. If email is being changed, update Supabase Auth first
-      if (isEmailChanging) {
+      if (trimmedEmail !== (email || "")) {
         const emailRedirectTo =
           typeof window !== "undefined"
-            ? `${window.location.origin}/profile?email_changed=true`
+            ? `${window.location.origin}/auth/confirm?next=/profile?email_changed=true`
             : undefined;
 
         const { data: authData, error: authError } = await supabase.auth.updateUser(
@@ -300,19 +347,16 @@ export default function ProfileDetailsCard({
 
         if (authError) {
           setSaving(false);
-          setMessage(`Authentication error: ${authError.message}`);
+          setMessage(authError.message);
           return;
         }
 
-        // If Supabase holds new_email, it requires link confirmation
+        // If Supabase has "Confirm email change" enabled, it holds new_email
+        // until the link in that email is clicked:
         if (authData?.user?.new_email) {
-          finalMessage = `Email change link sent to ${trimmedEmail}! To keep Authentication in sync, your email will update once you click the link.`;
+          finalMessage = `Email update requested! A confirmation link has been sent to ${trimmedEmail}. Please check that inbox (and Spam folder) and click the link to activate your new email in Authentication.`;
           shouldReload = false;
-          // Keep database email as currently confirmed email until link is clicked
-          effectiveEmail = email || "";
         } else {
-          // If Secure Email Change is OFF in Supabase, email updated immediately
-          effectiveEmail = trimmedEmail;
           finalMessage = "Profile and email updated in Authentication successfully.";
         }
       } else {
@@ -326,64 +370,6 @@ export default function ProfileDetailsCard({
 
         if (metadataError) {
           console.error("Auth metadata error:", metadataError);
-        }
-        effectiveEmail = trimmedEmail;
-      }
-
-      // 2. Update members table (sync email only when confirmed or unchanged)
-      const memberUpdates: Record<string, any> = {
-        full_name: trimmedName,
-        phone: trimmedMobile,
-        nid: trimmedNid || null,
-      };
-      if (effectiveEmail) {
-        memberUpdates.email = effectiveEmail;
-      }
-
-      const { error: memberError } = await supabase
-        .from("members")
-        .update(memberUpdates)
-        .eq("id", memberId);
-
-      if (memberError) {
-        setSaving(false);
-        setMessage(memberError.message);
-        return;
-      }
-
-      // 3. Update profiles table if userId is present
-      if (userId) {
-        const profileUpdates: Record<string, any> = {
-          full_name: trimmedName,
-          phone: trimmedMobile,
-        };
-        if (effectiveEmail) {
-          profileUpdates.email = effectiveEmail;
-        }
-
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update(profileUpdates)
-          .eq("id", userId);
-
-        if (profileError) {
-          console.error("Profile update error:", profileError);
-        }
-      }
-
-      // 4. If admin, update mess_groups table
-      if (isAdmin && groupId && trimmedMessName) {
-        const { error: groupError } = await supabase
-          .from("mess_groups")
-          .update({
-            name: trimmedMessName,
-          })
-          .eq("id", groupId);
-
-        if (groupError) {
-          setSaving(false);
-          setMessage(`Failed to update mess name: ${groupError.message}`);
-          return;
         }
       }
 

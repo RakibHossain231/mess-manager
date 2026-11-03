@@ -1,16 +1,4 @@
--- =========================================================================
--- ⚡ Supabase Performance Indexes for Mess Manager
--- =========================================================================
--- 100% SAFE & NON-DESTRUCTIVE:
--- - This script DOES NOT delete or modify any existing data.
--- - Uses `CREATE INDEX IF NOT EXISTS` so it can be safely re-run anytime.
--- - Reduces Supabase query response time from ~100-300ms down to ~5-15ms.
---
--- Instructions:
--- 1. Go to your Supabase Dashboard: https://supabase.com/dashboard
--- 2. Select your project ("netfcyimtrtlvhnvnuaw")
--- 3. In the left sidebar, click on "SQL Editor"
--- 4. Paste all the SQL queries below and click "RUN" (green button)
+
 -- =========================================================================
 
 -- 1. Members Indexes (Speeds up member lookups, status checks, and user joins)
