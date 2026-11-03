@@ -328,7 +328,7 @@ export default function ProfileDetailsCard({
       if (trimmedEmail !== (email || "")) {
         const emailRedirectTo =
           typeof window !== "undefined"
-            ? `${window.location.origin}/auth/confirm?next=/profile?email_changed=true`
+            ? `${window.location.origin}/profile?email_changed=true`
             : undefined;
 
         const { data: authData, error: authError } = await supabase.auth.updateUser(
