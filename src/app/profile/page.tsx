@@ -5,7 +5,17 @@ import SectionTitle from "@/components/shared/section-title";
 import ProfileDetailsCard from "@/components/profile/profile-details-card";
 import { getUserGroupContext } from "@/lib/group-access";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ email_changed?: string; error?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const emailChangedNotice = resolvedParams.email_changed === "true";
+  const initialError = resolvedParams.error
+    ? decodeURIComponent(resolvedParams.error)
+    : null;
+
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
 
@@ -86,12 +96,14 @@ export default async function ProfilePage() {
           groupId={group.id}
           name={member.full_name}
           role={member.role}
-          email={user.email ?? null}
+          email={user.email ?? member.email ?? null}
           mobileNumber={member.phone ?? null}
           nidNumber={member.nid ?? null}
           groupName={group.name}
           charges={charges}
           monthLabel={currentMonth?.label ?? null}
+          emailChangedNotice={emailChangedNotice}
+          initialError={initialError}
         />
       </div>
     </AppShell>

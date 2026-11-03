@@ -26,6 +26,8 @@ type ProfileDetailsCardProps = {
   groupName: string;
   charges?: MemberCharges | null;
   monthLabel?: string | null;
+  emailChangedNotice?: boolean;
+  initialError?: string | null;
 };
 
 const CHARGE_LABELS: { key: keyof MemberCharges; label: string }[] = [
@@ -147,6 +149,8 @@ export default function ProfileDetailsCard({
   groupName,
   charges,
   monthLabel,
+  emailChangedNotice = false,
+  initialError = null,
 }: ProfileDetailsCardProps) {
   const supabase = createClient();
 
@@ -155,7 +159,12 @@ export default function ProfileDetailsCard({
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    initialError ||
+      (emailChangedNotice
+        ? "✓ Email address updated and confirmed in Authentication successfully!"
+        : "")
+  );
 
   // Change-password state (no old password required, per user preference).
   const [newPassword, setNewPassword] = useState("");
@@ -314,16 +323,27 @@ export default function ProfileDetailsCard({
 
       // 4. Update Supabase Auth user (email and metadata)
       let finalMessage = "Profile updated successfully.";
+      let shouldReload = true;
 
       if (trimmedEmail !== (email || "")) {
-        const { error: authError } = await supabase.auth.updateUser({
-          email: trimmedEmail,
-          data: {
-            name: trimmedName,
-            full_name: trimmedName,
-            display_name: trimmedName,
+        const emailRedirectTo =
+          typeof window !== "undefined"
+            ? `${window.location.origin}/auth/confirm?next=/profile?email_changed=true`
+            : undefined;
+
+        const { data: authData, error: authError } = await supabase.auth.updateUser(
+          {
+            email: trimmedEmail,
+            data: {
+              name: trimmedName,
+              full_name: trimmedName,
+              display_name: trimmedName,
+            },
           },
-        });
+          {
+            emailRedirectTo,
+          }
+        );
 
         if (authError) {
           setSaving(false);
@@ -331,8 +351,14 @@ export default function ProfileDetailsCard({
           return;
         }
 
-        finalMessage =
-          "Profile updated. If email confirmation is enabled, please verify your new email address.";
+        // If Supabase has "Confirm email change" enabled, it holds new_email
+        // until the link in that email is clicked:
+        if (authData?.user?.new_email) {
+          finalMessage = `Email update requested! A confirmation link has been sent to ${trimmedEmail}. Please check that inbox (and Spam folder) and click the link to activate your new email in Authentication.`;
+          shouldReload = false;
+        } else {
+          finalMessage = "Profile and email updated in Authentication successfully.";
+        }
       } else {
         const { error: metadataError } = await supabase.auth.updateUser({
           data: {
@@ -359,7 +385,10 @@ export default function ProfileDetailsCard({
       setSaving(false);
       setIsEditing(false);
       setMessage(finalMessage);
-      window.location.reload();
+
+      if (shouldReload) {
+        window.location.reload();
+      }
     } catch (err: any) {
       setSaving(false);
       setMessage(err?.message || "An unexpected error occurred while saving.");
@@ -469,7 +498,19 @@ export default function ProfileDetailsCard({
       </div>
 
       {message ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200">
+        <div
+          className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+            message.toLowerCase().includes("failed") ||
+            message.toLowerCase().includes("error") ||
+            message.toLowerCase().includes("invalid")
+              ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+              : message.toLowerCase().includes("requested") ||
+                message.toLowerCase().includes("sent a confirmation") ||
+                message.toLowerCase().includes("pending")
+              ? "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900/60 dark:bg-teal-950/40 dark:text-teal-300"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+          }`}
+        >
           {message}
         </div>
       ) : null}
