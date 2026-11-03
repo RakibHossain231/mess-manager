@@ -13,7 +13,6 @@ export default function SetupMessForm({ userId }: { userId: string }) {
   const supabase = createClient();
 
   const [messName, setMessName] = useState("");
-  const [mode, setMode] = useState<"managed" | "collaborative">("managed");
   const [paymentDeadline, setPaymentDeadline] = useState("10");
   const [currency, setCurrency] = useState("BDT");
   const [loading, setLoading] = useState(false);
@@ -134,7 +133,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
       className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="grid gap-6 md:grid-cols-2">
-        <div>
+        <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Mess Name
           </label>
@@ -150,21 +149,7 @@ export default function SetupMessForm({ userId }: { userId: string }) {
 
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Mess Mode
-          </label>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as "managed" | "collaborative")}
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          >
-            <option value="managed">Managed</option>
-            <option value="collaborative">Collaborative</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Payment Deadline
+            Payment Deadline (Day of Month)
           </label>
           <input
             type="number"
