@@ -16,6 +16,8 @@ type MemberCharges = {
 
 type ProfileDetailsCardProps = {
   memberId: string;
+  userId?: string;
+  groupId?: string;
   name: string;
   role: string;
   email?: string | null;
@@ -102,15 +104,22 @@ function EditableItem({
         {label}
       </p>
 
-      {textarea ? (
+      {disabled ? (
+        <p className="mt-2 break-all text-sm font-medium text-slate-900 dark:text-white">
+          {value?.trim() ? (
+            value
+          ) : (
+            <span className="italic text-slate-400 dark:text-slate-500">Not set</span>
+          )}
+        </p>
+      ) : textarea ? (
         <textarea
           name={name}
           value={value}
           onChange={onChange}
-          disabled={disabled}
           rows={2}
           placeholder={placeholder}
-          className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0 disabled:py-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
       ) : (
         <input
@@ -118,9 +127,8 @@ function EditableItem({
           name={name}
           value={value}
           onChange={onChange}
-          disabled={disabled}
           placeholder={placeholder}
-          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:px-0 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
       )}
     </div>
@@ -129,6 +137,8 @@ function EditableItem({
 
 export default function ProfileDetailsCard({
   memberId,
+  userId,
+  groupId,
   name,
   role,
   email,
@@ -140,6 +150,7 @@ export default function ProfileDetailsCard({
 }: ProfileDetailsCardProps) {
   const supabase = createClient();
 
+  const isAdmin = role === "admin" || role === "owner";
   const initial = name?.trim()?.charAt(0)?.toUpperCase() || "U";
 
   const [isEditing, setIsEditing] = useState(false);
@@ -176,10 +187,11 @@ export default function ProfileDetailsCard({
   );
 
   const [formData, setFormData] = useState({
-    name: name || "Empty",
+    name: name || "",
     email: email || "",
     mobileNumber: mobileNumber || "",
-    nidNumber: nidNumber || "Empty",
+    nidNumber: nidNumber || "",
+    messName: groupName || "",
   });
 
   const currentOpenMonthText = useMemo(() => {
@@ -213,6 +225,7 @@ export default function ProfileDetailsCard({
       email: email || "",
       mobileNumber: mobileNumber || "",
       nidNumber: nidNumber || "",
+      messName: groupName || "",
     });
     setMessage("");
     setIsEditing(false);
@@ -225,6 +238,7 @@ export default function ProfileDetailsCard({
     const trimmedEmail = formData.email.trim();
     const trimmedMobile = formData.mobileNumber.trim();
     const trimmedNid = formData.nidNumber.trim();
+    const trimmedMessName = formData.messName.trim();
 
     if (!trimmedName) {
       setMessage("Name is required.");
@@ -235,68 +249,121 @@ export default function ProfileDetailsCard({
       setMessage("Email is required.");
       return;
     }
-     if (!trimmedMobile) {
+
+    if (!trimmedMobile) {
       setMessage("Mobile Number is required.");
+      return;
+    }
+
+    if (isAdmin && !trimmedMessName) {
+      setMessage("Mess / Group name is required.");
       return;
     }
 
     setSaving(true);
 
-    const { error: memberError } = await supabase
-      .from("members")
-      .update({
-        full_name: trimmedName,
-        phone: trimmedMobile || null,
-        nid: trimmedNid || null,
-      })
-      .eq("id", memberId);
+    try {
+      // 1. Update members table
+      const { error: memberError } = await supabase
+        .from("members")
+        .update({
+          full_name: trimmedName,
+          email: trimmedEmail,
+          phone: trimmedMobile,
+          nid: trimmedNid || null,
+        })
+        .eq("id", memberId);
 
-    if (memberError) {
+      if (memberError) {
+        setSaving(false);
+        setMessage(memberError.message);
+        return;
+      }
+
+      // 2. Update profiles table if userId is present
+      if (userId) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: trimmedName,
+            email: trimmedEmail,
+            phone: trimmedMobile,
+          })
+          .eq("id", userId);
+
+        if (profileError) {
+          console.error("Profile update error:", profileError);
+        }
+      }
+
+      // 3. If admin, update mess_groups table
+      if (isAdmin && groupId && trimmedMessName) {
+        const { error: groupError } = await supabase
+          .from("mess_groups")
+          .update({
+            name: trimmedMessName,
+          })
+          .eq("id", groupId);
+
+        if (groupError) {
+          setSaving(false);
+          setMessage(`Failed to update mess name: ${groupError.message}`);
+          return;
+        }
+      }
+
+      // 4. Update Supabase Auth user (email and metadata)
+      let finalMessage = "Profile updated successfully.";
+
+      if (trimmedEmail !== (email || "")) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: trimmedEmail,
+          data: {
+            name: trimmedName,
+            full_name: trimmedName,
+            display_name: trimmedName,
+          },
+        });
+
+        if (authError) {
+          setSaving(false);
+          setMessage(authError.message);
+          return;
+        }
+
+        finalMessage =
+          "Profile updated. If email confirmation is enabled, please verify your new email address.";
+      } else {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: {
+            name: trimmedName,
+            full_name: trimmedName,
+            display_name: trimmedName,
+          },
+        });
+
+        if (metadataError) {
+          console.error("Auth metadata error:", metadataError);
+        }
+      }
+
+      // 5. Update cached username in localStorage
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("mm_cached_username", trimmedName);
+        } catch {
+          // ignore
+        }
+      }
+
       setSaving(false);
-      setMessage(memberError.message);
-      return;
+      setIsEditing(false);
+      setMessage(finalMessage);
+      window.location.reload();
+    } catch (err: any) {
+      setSaving(false);
+      setMessage(err?.message || "An unexpected error occurred while saving.");
     }
-
-    let finalMessage = "Profile updated successfully.";
-
-    if (trimmedEmail !== (email || "")) {
-      const { error: authError } = await supabase.auth.updateUser({
-        email: trimmedEmail,
-        data: {
-          name: trimmedName,
-          full_name: trimmedName,
-          display_name: trimmedName,
-        },
-      });
-
-      if (authError) {
-        setSaving(false);
-        setMessage(authError.message);
-        return;
-      }
-
-      finalMessage =
-        "Profile updated. If email confirmation is enabled, please verify your new email address.";
-    } else {
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: {
-          name: trimmedName,
-          full_name: trimmedName,
-          display_name: trimmedName,
-        },
-      });
-
-      if (metadataError) {
-        setSaving(false);
-        setMessage(metadataError.message);
-        return;
-      }
-    }
-
-    setSaving(false);
-    setIsEditing(false);
-    setMessage(finalMessage);
-    window.location.reload();
   }
 
   async function handleChangePassword() {
@@ -447,7 +514,18 @@ export default function ProfileDetailsCard({
           placeholder="Enter your NID number"
         />
 
-        <InfoItem label="Mess / Group" value={groupName || "Not available"} />
+        {isAdmin ? (
+          <EditableItem
+            label="Mess / Group"
+            name="messName"
+            value={formData.messName}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="Enter mess / group name"
+          />
+        ) : (
+          <InfoItem label="Mess / Group" value={groupName || "Not available"} />
+        )}
 
         <InfoItem label="Account Status" value="Active" />
       </div>
