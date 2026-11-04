@@ -20,6 +20,7 @@ type ExpenseEntry = {
   expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
+  title?: string | null;
 };
 
 type ChargeRow = {
@@ -171,7 +172,7 @@ export default async function ReportsPage({
   } else {
     const expensesPromise = supabase
       .from("expense_entries")
-      .select("expense_type, amount, paid_by_member_id")
+      .select("expense_type, amount, paid_by_member_id, title")
       .eq("month_id", selectedMonth.id);
 
     const chargesPromise = supabase

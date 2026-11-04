@@ -13,6 +13,7 @@ type BuildInput = {
     expense_type: string;
     amount: number;
     paid_by_member_id: string | null;
+    title?: string | null;
   }[];
   charges: {
     member_id: string;
@@ -54,8 +55,39 @@ export function buildSettlementRows({
     .filter((e) => e.expense_type === "bazar")
     .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
+  const STANDARD_SHARED_TITLES = new Set([
+    "WiFi",
+    "Lift Bill",
+    "Current Bill",
+    "Gas Bill",
+    "Bua Bill",
+    "Moylar Bill",
+    "Panir Bill",
+  ]);
+
+  const totalDistributedCharges = charges.reduce(
+    (sum, c) =>
+      sum +
+      Number(c.wifi || 0) +
+      Number(c.utility || 0) +
+      Number(c.electricity || 0) +
+      Number(c.gas || 0) +
+      Number(c.water || 0) +
+      Number(c.others || 0),
+    0
+  );
+
   const totalShared = expenses
-    .filter((e) => e.expense_type === "shared")
+    .filter((e) => {
+      if (e.expense_type !== "shared") return false;
+      if (
+        totalDistributedCharges > 0 &&
+        STANDARD_SHARED_TITLES.has(e.title || "")
+      ) {
+        return false;
+      }
+      return true;
+    })
     .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;

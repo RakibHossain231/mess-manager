@@ -115,7 +115,7 @@ export default function MonthActions({
           .eq("month_id", currentMonthId),
         supabase
           .from("expense_entries")
-          .select("expense_type, amount, paid_by_member_id")
+          .select("expense_type, amount, paid_by_member_id, title, description")
           .eq("month_id", currentMonthId),
         supabase
           .from("member_monthly_charges")
@@ -228,6 +228,30 @@ export default function MonthActions({
         setLoading(false);
         setMsg(chargesInsertError.message);
         return;
+      }
+    }
+
+    const sharedExpensesToCopy = (expensesData ?? [])
+      .filter((e) => e.expense_type === "shared")
+      .map((e) => ({
+        group_id: groupId,
+        month_id: newMonth.id,
+        paid_by_member_id: e.paid_by_member_id,
+        amount: Number(e.amount || 0),
+        expense_type: "shared" as const,
+        title: e.title || "Shared Bill",
+        description: e.description,
+        expense_date:
+          nextMonthInfo.monthStart || new Date().toISOString().slice(0, 10),
+      }));
+
+    if (sharedExpensesToCopy.length > 0) {
+      const { error: sharedInsertError } = await supabase
+        .from("expense_entries")
+        .insert(sharedExpensesToCopy);
+
+      if (sharedInsertError) {
+        console.error("Failed to carry forward shared bills:", sharedInsertError);
       }
     }
 

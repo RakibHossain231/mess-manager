@@ -20,6 +20,7 @@ type ExpenseEntry = {
   expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
+  title?: string | null;
 };
 
 type ChargeRow = {
@@ -134,9 +135,48 @@ export default function ClosedMonthSettlementView({
     .filter((item) => item.expense_type === "bazar")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  const totalSharedBills = expenses
-    .filter((item) => item.expense_type === "shared")
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const STANDARD_SHARED_TITLES = useMemo(
+    () =>
+      new Set([
+        "WiFi",
+        "Lift Bill",
+        "Current Bill",
+        "Gas Bill",
+        "Bua Bill",
+        "Moylar Bill",
+        "Panir Bill",
+      ]),
+    []
+  );
+
+  const totalDistributedCharges = useMemo(() => {
+    return charges.reduce(
+      (sum, c) =>
+        sum +
+        Number(c.wifi || 0) +
+        Number(c.utility || 0) +
+        Number(c.electricity || 0) +
+        Number(c.gas || 0) +
+        Number(c.water || 0) +
+        Number(c.others || 0),
+      0
+    );
+  }, [charges]);
+
+  const totalSharedBills = useMemo(() => {
+    return expenses
+      .filter((item) => {
+        if (item.expense_type !== "shared") return false;
+        if (
+          totalDistributedCharges > 0 &&
+          STANDARD_SHARED_TITLES.has(item.title || "")
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  }, [expenses, totalDistributedCharges, STANDARD_SHARED_TITLES]);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
 

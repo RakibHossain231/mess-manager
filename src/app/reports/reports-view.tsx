@@ -18,6 +18,7 @@ type ExpenseEntry = {
   expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
+  title?: string | null;
 };
 
 // One row per member in member_monthly_charges (the snapshot keeps these at
@@ -83,7 +84,7 @@ const chargeCategories = [
   { key: "gas", label: "Gas Bill" },
   { key: "water", label: "Pani Bill" },
   { key: "khala_bill", label: "Khala Bill" },
-  { key: "others", label: "Others" },
+  { key: "others", label: "Moylar Bill / Others" },
 ] as const;
 
 const CHARGE_FIELDS = [
@@ -372,13 +373,48 @@ export default function ReportsView({
     .filter((item) => item.expense_type === "bazar")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  const totalSharedBills = expenses
+  const STANDARD_SHARED_TITLES = new Set([
+    "WiFi",
+    "Lift Bill",
+    "Current Bill",
+    "Gas Bill",
+    "Bua Bill",
+    "Moylar Bill",
+    "Panir Bill",
+  ]);
+
+  const totalDistributedCharges = charges.reduce(
+    (sum, c) =>
+      sum +
+      Number(c.wifi || 0) +
+      Number(c.utility || 0) +
+      Number(c.electricity || 0) +
+      Number(c.gas || 0) +
+      Number(c.water || 0) +
+      Number(c.others || 0),
+    0
+  );
+
+  const totalSharedBillsOverall = expenses
     .filter((item) => item.expense_type === "shared")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const unallocatedSharedBills = expenses
+    .filter((item) => {
+      if (item.expense_type !== "shared") return false;
+      if (
+        totalDistributedCharges > 0 &&
+        STANDARD_SHARED_TITLES.has(item.title || "")
+      ) {
+        return false;
+      }
+      return true;
+    })
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
   const perMemberSharedCost =
-    members.length > 0 ? totalSharedBills / members.length : 0;
+    members.length > 0 ? unallocatedSharedBills / members.length : 0;
 
   const chargeMap = new Map(charges.map((item) => [item.member_id, item]));
 
@@ -533,7 +569,7 @@ export default function ReportsView({
     .filter((row) => row.rawFinalBalance < 0)
     .reduce((sum, row) => sum + Math.abs(row.rawFinalBalance), 0);
 
-  const totalCharges = totalSharedBills + totalFixedCharges + totalWillReceive;
+  const totalCharges = unallocatedSharedBills + totalFixedCharges + totalWillReceive;
   const balanceDifference = Math.abs(totalCharges - totalWillPay);
   const isBalanced = balanceDifference < 0.01;
 
@@ -888,16 +924,16 @@ export default function ReportsView({
                     <td className="px-3 py-4">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          totalSharedBills > 0
+                          unallocatedSharedBills > 0
                             ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
                             : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                         }`}
                       >
-                        {totalSharedBills > 0 ? "Added" : "Not Added"}
+                        {unallocatedSharedBills > 0 ? "Added" : "Not Added"}
                       </span>
                     </td>
                     <td className="rounded-r-2xl px-3 py-4 font-medium text-slate-900 dark:text-white">
-                      {money(totalSharedBills)}
+                      {money(unallocatedSharedBills)}
                     </td>
                   </tr>
                 </tbody>
@@ -923,8 +959,10 @@ export default function ReportsView({
             />
             <StatBox
               label="Shared Bills"
-              value={money(totalSharedBills)}
-              sub={`per head ${money2(perMemberSharedCost)}`}
+              value={money(totalSharedBillsOverall)}
+              sub={`per head ${money2(
+                members.length > 0 ? totalSharedBillsOverall / members.length : 0
+              )}`}
             />
             <StatBox label="House Rent" value={money(totalRent)} />
             <StatBox label="Members" value={String(rows.length)} />
@@ -1076,7 +1114,7 @@ export default function ReportsView({
                     </td>
                     <td className="px-2 py-3 text-right">{money2(totalBazar)}</td>
                     <td className="px-2 py-3 text-right">
-                      {money2(totalSharedBills)}
+                      {money2(unallocatedSharedBills)}
                     </td>
                     <td className="px-2 py-3 text-right">{money2(totalRent)}</td>
                     <td className="px-2 py-3 text-right">
@@ -1373,16 +1411,16 @@ export default function ReportsView({
                     <td className="px-3 py-2.5">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          totalSharedBills > 0
+                          unallocatedSharedBills > 0
                             ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
                             : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                         }`}
                       >
-                        {totalSharedBills > 0 ? "Added" : "Not Added"}
+                        {unallocatedSharedBills > 0 ? "Added" : "Not Added"}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium text-slate-900 dark:text-white">
-                      {money(totalSharedBills)}
+                      {money(unallocatedSharedBills)}
                     </td>
                   </tr>
                 </tbody>

@@ -189,8 +189,103 @@ export default function ExpensesForm({
       }
     }
 
+    // Auto-sync shared bills to active members' monthly charges (Option 2)
+    const activeMembers = members;
+    const activeCount = activeMembers.length;
+
+    if (activeCount > 0) {
+      const wifiTotal = Number(sharedValues["wifi"] || 0);
+      const liftTotal = Number(sharedValues["utility"] || 0);
+      const currentTotal = Number(sharedValues["electricity"] || 0);
+      const gasTotal = Number(sharedValues["gas"] || 0);
+      const buaTotal = Number(sharedValues["bua"] || 0);
+      const moylaTotal = Number(sharedValues["moyla"] || 0);
+      const paniTotal = Number(sharedValues["pani"] || 0);
+
+      const perWifi = Math.round(wifiTotal / activeCount);
+      const perUtility = Math.round(liftTotal / activeCount);
+      const perElectricity = Math.round(currentTotal / activeCount);
+      const perGas = Math.round(gasTotal / activeCount);
+      const perMoyla = Math.round(moylaTotal / activeCount);
+      const perPani = Math.round(paniTotal / activeCount);
+      const perBua = buaTotal > 0 ? Math.round(buaTotal / activeCount) : null;
+
+      const { data: existingCharges, error: fetchErr } = await supabase
+        .from("member_monthly_charges")
+        .select("*")
+        .eq("month_id", monthId);
+
+      if (fetchErr) {
+        setSharedLoading(false);
+        setSharedMsg(fetchErr.message);
+        return;
+      }
+
+      const chargesMap = new Map(
+        (existingCharges ?? []).map((c) => [c.member_id, c])
+      );
+
+      const missingMemberIds = activeMembers
+        .filter((m) => !chargesMap.has(m.id))
+        .map((m) => m.id);
+
+      let defaultChargesMap = new Map();
+      if (missingMemberIds.length > 0) {
+        const { data: defCharges } = await supabase
+          .from("member_default_charges")
+          .select("*")
+          .in("member_id", missingMemberIds);
+
+        defaultChargesMap = new Map(
+          (defCharges ?? []).map((d) => [d.member_id, d])
+        );
+      }
+
+      const syncPayload = activeMembers.map((member) => {
+        const existing = chargesMap.get(member.id);
+        const def = defaultChargesMap.get(member.id);
+
+        const rent = existing
+          ? Number(existing.rent || 0)
+          : Number(def?.rent || 0);
+
+        const khala =
+          perBua !== null
+            ? perBua
+            : existing
+            ? Number(existing.khala_bill || 0)
+            : Number(def?.khala_bill || 0);
+
+        return {
+          month_id: monthId,
+          member_id: member.id,
+          rent,
+          wifi: perWifi,
+          utility: perUtility,
+          electricity: perElectricity,
+          gas: perGas,
+          water: perPani,
+          others: perMoyla,
+          khala_bill: khala,
+          discount: existing ? Number(existing.discount || 0) : 0,
+          advance: existing ? Number(existing.advance || 0) : 0,
+          previous_due: existing ? Number(existing.previous_due || 0) : 0,
+        };
+      });
+
+      const { error: syncError } = await supabase
+        .from("member_monthly_charges")
+        .upsert(syncPayload, { onConflict: "month_id,member_id" });
+
+      if (syncError) {
+        setSharedLoading(false);
+        setSharedMsg(syncError.message);
+        return;
+      }
+    }
+
     setSharedLoading(false);
-    setSharedMsg("Shared bills saved successfully.");
+    setSharedMsg("Shared bills saved and distributed equally among active members.");
     router.refresh();
   }
 
