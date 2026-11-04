@@ -31,6 +31,7 @@ const sharedCategories = [
   { key: "bua", label: "Bua Bill" },
   { key: "moyla", label: "Moylar Bill" },
   { key: "pani", label: "Panir Bill" },
+  { key: "others", label: "Others" },
 ] as const;
 
 export default function ExpensesForm({
@@ -450,7 +451,7 @@ export default function ExpensesForm({
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
             {sharedCategories.map((item) => (
               <div key={item.key}>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
