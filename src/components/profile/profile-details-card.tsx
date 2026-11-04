@@ -38,7 +38,7 @@ const CHARGE_LABELS: { key: keyof MemberCharges; label: string }[] = [
   { key: "gas", label: "Gas" },
   { key: "khala_bill", label: "Khala Bill" },
   { key: "utility", label: "Utility" },
-  { key: "others", label: "Moylar Bill / Others" },
+  { key: "others", label: "Moylar Bill" },
 ];
 
 function formatRole(role: string) {

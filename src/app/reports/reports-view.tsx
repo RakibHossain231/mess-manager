@@ -84,7 +84,7 @@ const chargeCategories = [
   { key: "gas", label: "Gas Bill" },
   { key: "water", label: "Pani Bill" },
   { key: "khala_bill", label: "Khala Bill" },
-  { key: "others", label: "Moylar Bill / Others" },
+  { key: "others", label: "Moylar Bill" },
 ] as const;
 
 const CHARGE_FIELDS = [
@@ -439,6 +439,45 @@ export default function ReportsView({
       );
     });
   });
+
+  const sharedExpenseByTitle = new Map<string, number>();
+  expenses.forEach((e) => {
+    if (e.expense_type === "shared" && e.title) {
+      sharedExpenseByTitle.set(
+        e.title,
+        (sharedExpenseByTitle.get(e.title) ?? 0) + Number(e.amount || 0)
+      );
+    }
+  });
+
+  const getCategoryDisplayAmount = (key: string): number => {
+    if (key === "wifi" && sharedExpenseByTitle.has("WiFi")) {
+      return sharedExpenseByTitle.get("WiFi") ?? 0;
+    }
+    if (key === "utility" && sharedExpenseByTitle.has("Lift Bill")) {
+      return sharedExpenseByTitle.get("Lift Bill") ?? 0;
+    }
+    if (key === "electricity" && sharedExpenseByTitle.has("Current Bill")) {
+      return sharedExpenseByTitle.get("Current Bill") ?? 0;
+    }
+    if (key === "gas" && sharedExpenseByTitle.has("Gas Bill")) {
+      return sharedExpenseByTitle.get("Gas Bill") ?? 0;
+    }
+    if (key === "water" && sharedExpenseByTitle.has("Panir Bill")) {
+      return sharedExpenseByTitle.get("Panir Bill") ?? 0;
+    }
+    if (key === "others" && sharedExpenseByTitle.has("Moylar Bill")) {
+      return sharedExpenseByTitle.get("Moylar Bill") ?? 0;
+    }
+    if (
+      key === "khala_bill" &&
+      sharedExpenseByTitle.has("Bua Bill") &&
+      (sharedExpenseByTitle.get("Bua Bill") ?? 0) > 0
+    ) {
+      return sharedExpenseByTitle.get("Bua Bill") ?? 0;
+    }
+    return Number(chargeFieldMap.get(key) ?? 0);
+  };
 
   const rows = members.map((member) => {
     const memberMeals = meals.filter((item) => item.member_id === member.id);
@@ -889,7 +928,7 @@ export default function ReportsView({
                 </thead>
                 <tbody>
                   {chargeCategories.map((item) => {
-                    const amount = Number(chargeFieldMap.get(item.key) ?? 0);
+                    const amount = getCategoryDisplayAmount(item.key);
                     const added = amount > 0;
 
                     return (
@@ -1376,7 +1415,7 @@ export default function ReportsView({
                 </thead>
                 <tbody>
                   {chargeCategories.map((item) => {
-                    const amount = Number(chargeFieldMap.get(item.key) ?? 0);
+                    const amount = getCategoryDisplayAmount(item.key);
                     const added = amount > 0;
 
                     return (

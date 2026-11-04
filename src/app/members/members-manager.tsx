@@ -392,7 +392,7 @@ export default function MembersManager({
     gas: "Gas",
     khala_bill: "Khala Bill",
     utility: "Utility",
-    others: "Moylar Bill / Others",
+    others: "Moylar Bill",
   };
 
   const renderChargeInput = (
