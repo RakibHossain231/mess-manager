@@ -12,6 +12,7 @@ import {
   UserCircle2,
   Users,
   UtensilsCrossed,
+  Wallet,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,11 @@ const navItems = [
     label: "Expenses",
     href: "/expenses",
     icon: Receipt,
+  },
+  {
+    label: "Reserve Fund",
+    href: "/reserve-fund",
+    icon: Wallet,
   },
   {
     label: "Reports",
