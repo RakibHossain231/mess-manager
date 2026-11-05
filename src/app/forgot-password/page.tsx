@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
     const cleanCode = otpCode.trim();
 
     if (!cleanCode || cleanCode.length < 6) {
-      setVerifyError("Please enter the complete 6-digit verification code.");
+      setVerifyError("Please enter the complete verification code.");
       return;
     }
 
@@ -139,7 +139,7 @@ export default function ForgotPasswordPage() {
             Verify Reset Code
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            We sent a 6-digit verification code to
+            We sent a verification code to
           </p>
           <p className="mt-1 font-semibold text-teal-700 dark:text-teal-400 break-all">
             {submittedEmail}
@@ -148,16 +148,16 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
             <div>
               <label className="mb-1.5 block text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                Enter 6-Digit Code
+                Enter Verification Code
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                maxLength={6}
-                placeholder="123456"
+                maxLength={8}
+                placeholder="12345678"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full text-center text-xl font-mono tracking-[0.35em] rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full text-center text-xl font-mono tracking-[0.25em] rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 required
                 autoFocus
               />
@@ -254,7 +254,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Forgot Password</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          Enter your account email. We will send a 6-digit verification code to reset your password.
+          Enter your account email. We will send a verification code to reset your password.
         </p>
 
         <form onSubmit={handleSendReset} className="mt-6 space-y-4">
