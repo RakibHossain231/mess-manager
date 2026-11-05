@@ -6,6 +6,7 @@ import ReserveFundView from "./reserve-fund-view";
 
 export type MemberItem = {
   id: string;
+  user_id?: string | null;
   full_name: string;
   role: "owner" | "admin" | "manager" | "member";
   status: string;
@@ -41,38 +42,48 @@ export default async function ReserveFundPage() {
 
   const { data: membersData } = await supabase
     .from("members")
-    .select("id, full_name, role, status")
+    .select("id, user_id, full_name, role, status")
     .eq("group_id", group.id)
     .order("created_at", { ascending: true });
 
   const members: MemberItem[] = membersData ?? [];
 
-  // Query reserve_fund_entries
+  // Query reserve_fund_entries & activity_logs
   let entries: ReserveFundEntry[] = [];
   let tableMissing = false;
 
-  const { data: entriesData, error } = await supabase
-    .from("reserve_fund_entries")
-    .select("*")
-    .eq("group_id", group.id)
-    .order("entry_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const [entriesRes, logsRes] = await Promise.all([
+    supabase
+      .from("reserve_fund_entries")
+      .select("*")
+      .eq("group_id", group.id)
+      .order("entry_date", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("activity_logs")
+      .select("id, actor_user_id, action, target_table, target_id, old_data, new_data, created_at")
+      .eq("group_id", group.id)
+      .eq("target_table", "reserve_fund_entries")
+      .order("created_at", { ascending: false }),
+  ]);
 
-  if (error) {
+  if (entriesRes.error) {
     // If table doesn't exist yet in Supabase schema
     if (
-      error.code === "42P01" ||
-      error.message?.toLowerCase().includes("does not exist") ||
-      error.message?.toLowerCase().includes("schema cache")
+      entriesRes.error.code === "42P01" ||
+      entriesRes.error.message?.toLowerCase().includes("does not exist") ||
+      entriesRes.error.message?.toLowerCase().includes("schema cache")
     ) {
       tableMissing = true;
     }
   } else {
-    entries = (entriesData ?? []).map((e) => ({
+    entries = (entriesRes.data ?? []).map((e) => ({
       ...e,
       amount: Number(e.amount || 0),
     }));
   }
+
+  const activityLogs = logsRes.data ?? [];
 
   return (
     <AppShell>
@@ -82,6 +93,8 @@ export default async function ReserveFundPage() {
         initialEntries={entries}
         currentUserRole={member.role}
         currentUserMemberId={member.id}
+        currentUserId={user.id}
+        initialActivityLogs={activityLogs}
         tableMissing={tableMissing}
       />
     </AppShell>

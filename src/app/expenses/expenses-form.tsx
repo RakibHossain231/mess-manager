@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import EditHistoryBadge, { type ActivityLogEntry } from "@/components/shared/edit-history-badge";
+import { recordActivityLog } from "@/lib/activity-logger";
 
 type Member = {
   id: string;
+  user_id?: string | null;
   full_name: string;
   role: "owner" | "admin" | "manager" | "member";
 };
@@ -41,6 +44,8 @@ export default function ExpensesForm({
   monthId,
   currentUserRole,
   currentUserMemberId,
+  currentUserId,
+  initialActivityLogs = [],
 }: {
   members: Member[];
   expenses: ExpenseItem[];
@@ -48,9 +53,14 @@ export default function ExpensesForm({
   monthId: string;
   currentUserRole: "owner" | "admin" | "manager" | "member";
   currentUserMemberId: string;
+  currentUserId?: string;
+  initialActivityLogs?: ActivityLogEntry[];
 }) {
   const router = useRouter();
   const supabase = createClient();
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>(
+    initialActivityLogs ?? []
+  );
 
   const isAdmin = currentUserRole === "owner" || currentUserRole === "admin";
   const isMember = currentUserRole === "member";
@@ -393,6 +403,41 @@ export default function ExpensesForm({
       return;
     }
 
+    if (currentUserId) {
+      const oldItem = expenses.find((e) => e.id === item.id) ?? item;
+      const logPayload = {
+        groupId,
+        actorUserId: currentUserId,
+        action: "update_bazar",
+        targetTable: "expense_entries",
+        targetId: item.id,
+        oldData: {
+          amount: Number(oldItem.amount),
+          date: oldItem.expense_date,
+          note: oldItem.description,
+        },
+        newData: {
+          amount: Number(editAmount),
+          date: editDate,
+          note: editNote.trim() || null,
+        },
+      };
+      await recordActivityLog(supabase, logPayload);
+      setActivityLogs((prev) => [
+        {
+          id: crypto.randomUUID(),
+          actor_user_id: currentUserId,
+          action: "update_bazar",
+          target_table: "expense_entries",
+          target_id: item.id,
+          old_data: logPayload.oldData,
+          new_data: logPayload.newData,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+    }
+
     cancelBazarEdit();
     setBazarMsg("Bazar updated successfully.");
     router.refresh();
@@ -570,6 +615,41 @@ export default function ExpensesForm({
     if (error) {
       setAmenityMsg(error.message);
       return;
+    }
+
+    if (currentUserId) {
+      const oldItem = expenses.find((e) => e.id === id);
+      const logPayload = {
+        groupId,
+        actorUserId: currentUserId,
+        action: "update_amenity",
+        targetTable: "expense_entries",
+        targetId: id,
+        oldData: {
+          amount: Number(oldItem?.amount ?? 0),
+          date: oldItem?.expense_date,
+          note: oldItem?.description,
+        },
+        newData: {
+          amount: Number(editAmenityAmount),
+          date: editAmenityDate,
+          note: editAmenityItemName.trim() || "Mess Amenities",
+        },
+      };
+      await recordActivityLog(supabase, logPayload);
+      setActivityLogs((prev) => [
+        {
+          id: crypto.randomUUID(),
+          actor_user_id: currentUserId,
+          action: "update_amenity",
+          target_table: "expense_entries",
+          target_id: id,
+          old_data: logPayload.oldData,
+          new_data: logPayload.newData,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
     }
 
     cancelAmenityEdit();
@@ -1014,6 +1094,10 @@ export default function ExpensesForm({
                       <span className="font-semibold text-sm text-slate-900 dark:text-white">
                         {expense.description || "Mess Amenities"}
                       </span>
+                      <EditHistoryBadge
+                        logs={activityLogs.filter((l) => l.target_id === expense.id)}
+                        members={members}
+                      />
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         Paid by: {payer?.full_name || "Unknown"}
                       </span>
@@ -1179,9 +1263,15 @@ export default function ExpensesForm({
                         >
                           <div className="sm:hidden space-y-2">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {expense.expense_date}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                  {expense.expense_date}
+                                </p>
+                                <EditHistoryBadge
+                                  logs={activityLogs.filter((l) => l.target_id === expense.id)}
+                                  members={members}
+                                />
+                              </div>
                               <p className="text-sm font-bold text-slate-900 dark:text-white">
                                 ৳ {Number(expense.amount).toFixed(0)}
                               </p>
@@ -1217,9 +1307,15 @@ export default function ExpensesForm({
                           </div>
 
                           <div className="hidden sm:grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr] items-center gap-3">
-                            <p className="text-sm text-slate-800 dark:text-slate-200">
-                              {expense.expense_date}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-slate-800 dark:text-slate-200">
+                                {expense.expense_date}
+                              </p>
+                              <EditHistoryBadge
+                                logs={activityLogs.filter((l) => l.target_id === expense.id)}
+                                members={members}
+                              />
+                            </div>
 
                             <p className="text-sm text-slate-800 dark:text-slate-200">
                               ৳ {Number(expense.amount).toFixed(0)}

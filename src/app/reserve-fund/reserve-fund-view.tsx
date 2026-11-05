@@ -17,6 +17,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import EditHistoryBadge, { type ActivityLogEntry } from "@/components/shared/edit-history-badge";
+import { recordActivityLog } from "@/lib/activity-logger";
 import type { MemberItem, ReserveFundEntry } from "./page";
 
 export default function ReserveFundView({
@@ -25,6 +27,8 @@ export default function ReserveFundView({
   initialEntries,
   currentUserRole,
   currentUserMemberId,
+  currentUserId,
+  initialActivityLogs = [],
   tableMissing,
 }: {
   groupId: string;
@@ -32,6 +36,8 @@ export default function ReserveFundView({
   initialEntries: ReserveFundEntry[];
   currentUserRole: string;
   currentUserMemberId: string;
+  currentUserId?: string;
+  initialActivityLogs?: ActivityLogEntry[];
   tableMissing: boolean;
 }) {
   const router = useRouter();
@@ -42,6 +48,9 @@ export default function ReserveFundView({
     currentUserRole === "manager";
 
   const [entries, setEntries] = useState<ReserveFundEntry[]>(initialEntries);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>(
+    initialActivityLogs ?? []
+  );
   const [activeTab, setActiveTab] = useState<"add" | "spend" | "handover">("add");
   const [filterType, setFilterType] = useState<"all" | "add" | "spend" | "handover">("all");
   const [copiedSql, setCopiedSql] = useState(false);
@@ -405,6 +414,42 @@ export default function ReserveFundView({
     if (error) {
       setEditMsg(error.message);
       return;
+    }
+
+    if (currentUserId) {
+      const logPayload = {
+        groupId,
+        actorUserId: currentUserId,
+        action: "update_reserve_fund",
+        targetTable: "reserve_fund_entries",
+        targetId: editingEntry.id,
+        oldData: {
+          amount: editingEntry.amount,
+          date: editingEntry.entry_date,
+          title: editingEntry.title,
+          note: editingEntry.description,
+        },
+        newData: {
+          amount: num,
+          date: editDate,
+          title: editTitle.trim() || editingEntry.title,
+          note: editDesc.trim() || null,
+        },
+      };
+      await recordActivityLog(supabase, logPayload);
+      setActivityLogs((prev) => [
+        {
+          id: crypto.randomUUID(),
+          actor_user_id: currentUserId,
+          action: "update_reserve_fund",
+          target_table: "reserve_fund_entries",
+          target_id: editingEntry.id,
+          old_data: logPayload.oldData,
+          new_data: logPayload.newData,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
     }
 
     setEntries((prev) =>
@@ -1095,9 +1140,15 @@ FOR ALL USING (
                       </td>
 
                       <td className="px-3 py-3">
-                        <p className="font-semibold text-slate-900 dark:text-white">
-                          {entry.title}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {entry.title}
+                          </p>
+                          <EditHistoryBadge
+                            logs={activityLogs.filter((l) => l.target_id === entry.id)}
+                            members={members}
+                          />
+                        </div>
                         {entry.description && (
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {entry.description}

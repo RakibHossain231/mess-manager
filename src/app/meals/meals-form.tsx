@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import EditHistoryBadge, { type ActivityLogEntry } from "@/components/shared/edit-history-badge";
+import { recordActivityLog } from "@/lib/activity-logger";
 
 type Member = {
   id: string;
+  user_id?: string | null;
   full_name: string;
   role: "owner" | "admin" | "manager" | "member";
 };
@@ -28,6 +31,8 @@ export default function MealsForm({
   monthId,
   currentUserRole,
   currentUserMemberId,
+  currentUserId,
+  initialActivityLogs = [],
 }: {
   members: Member[];
   meals: MealRow[];
@@ -36,9 +41,15 @@ export default function MealsForm({
   monthId: string;
   currentUserRole: "owner" | "admin" | "manager" | "member";
   currentUserMemberId: string;
+  currentUserId?: string;
+  initialActivityLogs?: ActivityLogEntry[];
 }) {
   const router = useRouter();
   const supabase = createClient();
+
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>(
+    initialActivityLogs ?? []
+  );
 
   const canManageMeals =
     currentUserRole === "owner" ||
@@ -226,6 +237,40 @@ export default function MealsForm({
       return;
     }
 
+    if (currentUserId && (Number(item.own_meal) !== own || Number(item.guest_meal) !== guest)) {
+      const logPayload = {
+        groupId,
+        actorUserId: currentUserId,
+        action: "update_meal",
+        targetTable: "meal_entries",
+        targetId: item.id,
+        oldData: {
+          own_meal: Number(item.own_meal || 0),
+          guest_meal: Number(item.guest_meal || 0),
+          date: item.meal_date,
+        },
+        newData: {
+          own_meal: own,
+          guest_meal: guest,
+          date: item.meal_date,
+        },
+      };
+      await recordActivityLog(supabase, logPayload);
+      setActivityLogs((prev) => [
+        {
+          id: crypto.randomUUID(),
+          actor_user_id: currentUserId,
+          action: "update_meal",
+          target_table: "meal_entries",
+          target_id: item.id,
+          old_data: logPayload.oldData,
+          new_data: logPayload.newData,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+    }
+
     cancelHistoryEdit();
     setMsg(`Updated ${item.meal_date} meal.`);
     router.refresh();
@@ -322,6 +367,46 @@ export default function MealsForm({
 
         const failed = results.find((result) => result.error);
         if (failed?.error) throw failed.error;
+
+        if (currentUserId) {
+          const newEntries: ActivityLogEntry[] = [];
+          for (const row of toUpdate) {
+            const oldRow =
+              allMeals.find((m) => m.id === row.id) ||
+              meals.find((m) => m.id === row.id);
+            const logPayload = {
+              groupId,
+              actorUserId: currentUserId,
+              action: "update_meal",
+              targetTable: "meal_entries",
+              targetId: row.id,
+              oldData: {
+                own_meal: Number(oldRow?.own_meal || 0),
+                guest_meal: Number(oldRow?.guest_meal || 0),
+                date: oldRow?.meal_date || entryDate,
+              },
+              newData: {
+                own_meal: row.own_meal,
+                guest_meal: row.guest_meal,
+                date: oldRow?.meal_date || entryDate,
+              },
+            };
+            await recordActivityLog(supabase, logPayload);
+            newEntries.push({
+              id: crypto.randomUUID(),
+              actor_user_id: currentUserId,
+              action: "update_meal",
+              target_table: "meal_entries",
+              target_id: row.id,
+              old_data: logPayload.oldData,
+              new_data: logPayload.newData,
+              created_at: new Date().toISOString(),
+            });
+          }
+          if (newEntries.length > 0) {
+            setActivityLogs((prev) => [...newEntries, ...prev]);
+          }
+        }
       }
 
       setLoading(false);
@@ -616,7 +701,15 @@ export default function MealsForm({
                             className="bg-white text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300"
                           >
                             <td className="rounded-l-2xl px-3 py-3">
-                              {item.meal_date}
+                              <div className="flex items-center gap-2">
+                                <span>{item.meal_date}</span>
+                                <EditHistoryBadge
+                                  logs={activityLogs.filter(
+                                    (l) => l.target_id === item.id
+                                  )}
+                                  members={members}
+                                />
+                              </div>
                             </td>
                             <td className="px-3 py-3">
                               {isEditing ? (

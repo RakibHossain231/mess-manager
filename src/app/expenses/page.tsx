@@ -6,6 +6,7 @@ import { getUserGroupContext } from "@/lib/group-access";
 
 type Member = {
   id: string;
+  user_id?: string | null;
   full_name: string;
   role: "owner" | "admin" | "manager" | "member";
 };
@@ -34,10 +35,10 @@ export default async function ExpensesPage() {
     redirect("/join");
   }
 
-  const [membersRes, monthRes] = await Promise.all([
+  const [membersRes, monthRes, logsRes] = await Promise.all([
     supabase
       .from("members")
-      .select("id, full_name, role")
+      .select("id, user_id, full_name, role")
       .eq("group_id", group.id)
       .eq("status", "active")
       .order("created_at", { ascending: true }),
@@ -48,6 +49,12 @@ export default async function ExpensesPage() {
       .eq("status", "open")
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("activity_logs")
+      .select("id, actor_user_id, action, target_table, target_id, old_data, new_data, created_at")
+      .eq("group_id", group.id)
+      .eq("target_table", "expense_entries")
+      .order("created_at", { ascending: false }),
   ]);
 
   const month = monthRes.data;
@@ -72,6 +79,7 @@ export default async function ExpensesPage() {
 
   const members: Member[] = membersRes.data ?? [];
   const expenses: ExpenseItem[] = expenseRows ?? [];
+  const activityLogs = logsRes.data ?? [];
 
   return (
     <AppShell>
@@ -82,6 +90,8 @@ export default async function ExpensesPage() {
         monthId={month.id}
         currentUserRole={member.role}
         currentUserMemberId={member.id}
+        currentUserId={user.id}
+        initialActivityLogs={activityLogs}
       />
     </AppShell>
   );
