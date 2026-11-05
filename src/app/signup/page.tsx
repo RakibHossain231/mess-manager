@@ -232,7 +232,7 @@ export default function SignupPage() {
     if (error) {
       setResendStatus(`Failed to resend: ${error.message}`);
     } else {
-      setResendStatus("A new verification code/link has been sent! Check your inbox.");
+      setResendStatus("A new verification code has been sent! Check your inbox.");
       setResendCooldown(60);
     }
   }
@@ -266,7 +266,7 @@ export default function SignupPage() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            We sent a verification code and link to:
+            We sent a verification code to:
           </p>
           <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
             {submittedEmail}
@@ -327,7 +327,7 @@ export default function SignupPage() {
                 ? "Resending..."
                 : resendCooldown > 0
                 ? `Resend code in ${resendCooldown}s`
-                : "Resend Verification Code / Email"}
+                : "Resend Verification Code"}
             </button>
 
             <Link
