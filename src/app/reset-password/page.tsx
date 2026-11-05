@@ -152,7 +152,7 @@ function ResetPasswordContent() {
                 href="/forgot-password"
                 className="text-sm font-medium text-teal-700 transition hover:text-teal-800 hover:underline dark:text-teal-400 dark:hover:text-teal-300"
               >
-                Request a new reset link
+                Request a new verification code
               </Link>
             </div>
           </div>
