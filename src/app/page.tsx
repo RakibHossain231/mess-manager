@@ -62,7 +62,7 @@ export default async function HomePage() {
 
   const { group, member } = await getUserGroupContext(supabase, user.id);
 
-  if (!group || !member) {
+  if (!group || !member || member.status !== "active") {
     redirect("/join");
   }
 

@@ -19,7 +19,7 @@ export default async function MembersPage() {
 
   const { group, member } = await getUserGroupContext(supabase, user.id);
 
-  if (!group || !member) {
+  if (!group || !member || member.status !== "active") {
     redirect("/join");
   }
 

@@ -39,6 +39,7 @@ export const getUserGroupContext = cache(
       .select(`${MEMBER_COLUMNS}, mess_groups(${GROUP_COLUMNS})`)
       .eq("user_id", userId)
       .eq("status", "active")
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -66,6 +67,7 @@ export const getUserGroupContext = cache(
       .from("mess_groups")
       .select(GROUP_COLUMNS)
       .eq("owner_id", userId)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -83,6 +85,15 @@ export const getUserGroupContext = cache(
       .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
+
+    // If owner has been marked as left or is not active in this mess,
+    // they should not be treated as an active member of this mess.
+    if (ownerMember && ownerMember.status !== "active") {
+      return {
+        group: null,
+        member: null,
+      };
+    }
 
     return {
       group: ownedGroup,

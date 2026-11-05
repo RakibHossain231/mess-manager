@@ -65,7 +65,7 @@ export default async function ClosedMonthSettlementPage({
 
   const { group, member } = await getUserGroupContext(supabase, user.id);
 
-  if (!group || !member) {
+  if (!group || !member || member.status !== "active") {
     redirect("/join");
   }
 

@@ -31,10 +31,28 @@ export default function JoinPage() {
 
       if (!user) return;
 
+      // If user has an active membership in any mess, redirect to dashboard
+      const { data: activeMember } = await supabase
+        .from("members")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      if (active && activeMember) {
+        router.push("/");
+        router.refresh();
+        return;
+      }
+
+      // Check if user has an ongoing pending join request
       const { data: existing } = await supabase
         .from("members")
         .select("status")
         .eq("user_id", user.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -48,7 +66,7 @@ export default function JoinPage() {
     return () => {
       active = false;
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   async function handleBackToLogin() {
     setLeaving(true);
@@ -82,23 +100,34 @@ export default function JoinPage() {
       return;
     }
 
-    const { data: alreadyLinked } = await supabase
+    // Check if the user is currently an active member of an existing mess
+    const { data: activeMember } = await supabase
       .from("members")
-      .select("id, status")
+      .select("id")
       .eq("user_id", user.id)
+      .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
-    if (alreadyLinked) {
+    if (activeMember) {
       setLoading(false);
-
-      if (alreadyLinked.status === "pending") {
-        setPendingApproval(true);
-        return;
-      }
-
       router.push("/");
       router.refresh();
+      return;
+    }
+
+    // Check if user already has an ongoing pending request
+    const { data: pendingMember } = await supabase
+      .from("members")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingMember) {
+      setLoading(false);
+      setPendingApproval(true);
       return;
     }
 
@@ -153,13 +182,7 @@ export default function JoinPage() {
     }
 
     if (existingMember) {
-      if (existingMember.status === "left") {
-        setLoading(false);
-        setErrorText("This member is inactive. Please contact admin.");
-        return;
-      }
-
-      if (existingMember.user_id) {
+      if (existingMember.user_id && existingMember.user_id !== user.id) {
         setLoading(false);
         setErrorText("This member is already linked to another account.");
         return;
@@ -173,8 +196,7 @@ export default function JoinPage() {
           phone: profileMobile,
           status: "pending",
         })
-        .eq("id", existingMember.id)
-        .is("user_id", null);
+        .eq("id", existingMember.id);
 
       if (updateError) {
         setLoading(false);
@@ -230,6 +252,29 @@ export default function JoinPage() {
               className="mt-6 w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               Check Approval Status
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                setLeaving(true);
+                const {
+                  data: { user },
+                } = await supabase.auth.getUser();
+                if (user) {
+                  await supabase
+                    .from("members")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("status", "pending");
+                }
+                setPendingApproval(false);
+                setLeaving(false);
+              }}
+              disabled={leaving}
+              className="mt-3 w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
+            >
+              Cancel Request / Enter Different Code
             </button>
           </>
         ) : (
