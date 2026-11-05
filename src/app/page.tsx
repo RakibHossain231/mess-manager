@@ -122,11 +122,20 @@ export default async function HomePage() {
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalSharedBills = expenseEntries
-    .filter((item) => item.expense_type === "shared" && item.title !== "Home Amenities")
+    .filter(
+      (item) =>
+        item.expense_type === "shared" &&
+        item.title !== "Home Amenities" &&
+        item.title !== "Mess Amenities"
+    )
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalAmenities = expenseEntries
-    .filter((item) => item.expense_type === "shared" && item.title === "Home Amenities")
+    .filter(
+      (item) =>
+        item.expense_type === "shared" &&
+        (item.title === "Home Amenities" || item.title === "Mess Amenities")
+    )
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
@@ -142,6 +151,7 @@ export default async function HomePage() {
           (item) =>
             item.expense_type === "shared" &&
             item.title !== "Home Amenities" &&
+            item.title !== "Mess Amenities" &&
             Number(item.amount || 0) > 0 &&
             item.title
         )
@@ -183,7 +193,7 @@ export default async function HomePage() {
       .filter(
         (item) =>
           item.expense_type === "shared" &&
-          item.title === "Home Amenities" &&
+          (item.title === "Home Amenities" || item.title === "Mess Amenities") &&
           item.paid_by_member_id === memberItem.id
       )
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);

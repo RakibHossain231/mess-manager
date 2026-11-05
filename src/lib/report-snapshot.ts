@@ -78,7 +78,9 @@ export function buildSettlementRows({
   );
 
   const amenityExpenses = expenses.filter(
-    (e) => e.expense_type === "shared" && e.title === "Home Amenities"
+    (e) =>
+      e.expense_type === "shared" &&
+      (e.title === "Mess Amenities" || e.title === "Home Amenities")
   );
   const totalAmenities = amenityExpenses.reduce(
     (sum, e) => sum + Number(e.amount || 0),
@@ -90,7 +92,8 @@ export function buildSettlementRows({
   const totalShared = expenses
     .filter((e) => {
       if (e.expense_type !== "shared") return false;
-      if (e.title === "Home Amenities") return false;
+      if (e.title === "Home Amenities" || e.title === "Mess Amenities")
+        return false;
       if (
         totalDistributedCharges > 0 &&
         STANDARD_SHARED_TITLES.has(e.title || "")
