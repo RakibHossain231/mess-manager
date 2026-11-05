@@ -83,6 +83,29 @@ export default function SignupPage() {
     });
 
     if (signupError) {
+      // If error says user already registered, check if unconfirmed to allow completing verification
+      if (
+        signupError.message.toLowerCase().includes("already registered") ||
+        signupError.message.toLowerCase().includes("already exists")
+      ) {
+        const { error: resendErr } = await supabase.auth.resend({
+          type: "signup",
+          email: cleanEmail,
+        });
+
+        if (!resendErr) {
+          setSubmittedEmail(cleanEmail);
+          setSubmittedName(cleanName);
+          setSubmittedMobile(cleanMobile);
+          setResendCooldown(60);
+          setOtpCode("");
+          setVerifyError("");
+          setResendStatus("A new verification code has been sent to your email. Enter the code below to complete signup.");
+          setLoading(false);
+          return;
+        }
+      }
+
       setErrorText(signupError.message);
       setLoading(false);
       return;
@@ -98,24 +121,33 @@ export default function SignupPage() {
 
     // If an existing user signed up again and identities is empty (Supabase security feature)
     if (user.identities && user.identities.length === 0) {
+      // Attempt to resend verification code if account is not yet confirmed
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+      });
+
+      if (!resendErr) {
+        setSubmittedEmail(cleanEmail);
+        setSubmittedName(cleanName);
+        setSubmittedMobile(cleanMobile);
+        setResendCooldown(60);
+        setOtpCode("");
+        setVerifyError("");
+        setResendStatus("A new verification code has been sent to your email. Enter the code below to complete signup.");
+        setLoading(false);
+        return;
+      }
+
       setErrorText(
-        "An account with this email already exists. Please log in or use Forgot Password."
+        "An account with this email already exists and is active. Please log in or use Forgot Password."
       );
       setLoading(false);
       return;
     }
 
-    // Try upserting to profiles table (best-effort, also synced upon email confirm)
-    try {
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        full_name: cleanName,
-        email: cleanEmail,
-        phone: cleanMobile,
-      });
-    } catch {
-      // Non-blocking; auth/confirm will sync it on confirmation
-    }
+    // Note: Profiles table row is NOT created here.
+    // It is created ONLY AFTER the user verifies their OTP in handleVerifyOtp.
 
     // If email confirmation is enabled on Supabase, no active session is returned
     if (!signupData.session) {
