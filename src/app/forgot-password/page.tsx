@@ -178,24 +178,9 @@ export default function ForgotPasswordPage() {
             </button>
           </form>
 
-          <div className="relative my-5 flex items-center justify-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-            <span className="absolute bg-white px-3 text-xs font-semibold text-slate-400 dark:bg-slate-900">
-              OR
-            </span>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
-            <p className="font-semibold text-slate-800 dark:text-slate-200">
-              Alternative Option:
-            </p>
-            <p className="mt-1">
-              You can also click the <strong>password reset link</strong> directly in your email inbox to change your password.
-            </p>
-            <p className="mt-1.5 text-slate-500 dark:text-slate-400">
-              Can&apos;t find it? Please check your <strong>Spam / Junk</strong> folder.
-            </p>
-          </div>
+          <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+            Can&apos;t find the email? Please check your <strong>Spam / Junk</strong> folder.
+          </p>
 
           {resendStatus ? (
             <p className="mt-4 rounded-xl bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 dark:bg-teal-950/60 dark:text-teal-400">
