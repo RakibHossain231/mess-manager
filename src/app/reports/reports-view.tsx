@@ -15,10 +15,13 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
+  id?: string;
   expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
   title?: string | null;
+  description?: string | null;
+  expense_date?: string | null;
 };
 
 // One row per member in member_monthly_charges (the snapshot keeps these at
@@ -395,6 +398,18 @@ export default function ReportsView({
     0
   );
 
+  const amenityExpenses = expenses.filter(
+    (item) => item.expense_type === "shared" && item.title === "Home Amenities"
+  );
+
+  const totalAmenities = amenityExpenses.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+
+  const perMemberAmenityCost =
+    members.length > 0 ? totalAmenities / members.length : 0;
+
   const totalSharedBillsOverall = expenses
     .filter((item) => item.expense_type === "shared")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -402,6 +417,7 @@ export default function ReportsView({
   const unallocatedSharedBills = expenses
     .filter((item) => {
       if (item.expense_type !== "shared") return false;
+      if (item.title === "Home Amenities") return false;
       if (
         totalDistributedCharges > 0 &&
         STANDARD_SHARED_TITLES.has(item.title || "")
@@ -525,9 +541,22 @@ export default function ReportsView({
         Number(chargeRow.previous_due || 0)
       : 0;
 
+    const amenitiesPaid = isClosedMonth
+      ? 0
+      : amenityExpenses
+          .filter((item) => item.paid_by_member_id === member.id)
+          .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
     const mealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const rawFinalBalance = bazarPaid - mealCost - sharedShare - chargesTotal;
+    const amenitiesShare = perMemberAmenityCost;
+    const rawFinalBalance =
+      bazarPaid +
+      amenitiesPaid -
+      mealCost -
+      sharedShare -
+      amenitiesShare -
+      chargesTotal;
 
     const computedFinalType: "pay" | "receive" =
       rawFinalBalance >= 0 ? "receive" : "pay";
@@ -573,6 +602,8 @@ export default function ReportsView({
       guestMeal,
       totalMeal,
       bazarPaid,
+      amenitiesPaid,
+      amenitiesShare,
       rent,
       otherCharges,
       chargesTotal,
@@ -684,6 +715,8 @@ export default function ReportsView({
       guestMeal: 0,
       totalMeal: 0,
       bazarPaid: 0,
+      amenitiesPaid: 0,
+      amenitiesShare: perMemberAmenityCost,
       rent: 0,
       otherCharges: 0,
       chargesTotal: 0,
@@ -890,6 +923,16 @@ export default function ReportsView({
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Home Amenities</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
+                  {money2(myRow.amenitiesShare)}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Paid: {money(myRow.amenitiesPaid)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
                 <p className="text-sm text-slate-500 dark:text-slate-400">All Charges</p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
                   {money2(myRow.chargesTotal)}
@@ -1074,6 +1117,7 @@ export default function ReportsView({
                       Meal Cost
                     </th>
                     <th className="px-2 py-2 text-right font-semibold">Bazar</th>
+                    <th className="px-2 py-2 text-right font-semibold">Amenities</th>
                     <th className="px-2 py-2 text-right font-semibold">Shared</th>
                     <th className="px-2 py-2 text-right font-semibold">Rent</th>
                     <th className="px-2 py-2 text-right font-semibold">Other</th>
@@ -1108,6 +1152,14 @@ export default function ReportsView({
                         </td>
                         <td className="px-2 py-3 text-right">
                           {money2(row.bazarPaid)}
+                        </td>
+                        <td className="px-2 py-3 text-right">
+                          <span className="font-medium">{money2(row.amenitiesShare)}</span>
+                          {row.amenitiesPaid > 0 ? (
+                            <span className="block text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+                              Paid: {money(row.amenitiesPaid)}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-2 py-3 text-right">
                           {money2(row.sharedShare)}
@@ -1152,6 +1204,7 @@ export default function ReportsView({
                       {money2(totalMealCost)}
                     </td>
                     <td className="px-2 py-3 text-right">{money2(totalBazar)}</td>
+                    <td className="px-2 py-3 text-right">{money2(totalAmenities)}</td>
                     <td className="px-2 py-3 text-right">
                       {money2(unallocatedSharedBills)}
                     </td>
@@ -1166,6 +1219,92 @@ export default function ReportsView({
               </table>
             </div>
           </div>
+
+          {/* Home Amenities breakdown section */}
+          <section className="report-avoid-break rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Home Amenities (মেসের সামগ্রী)
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Shared household supplies (Harpic, Jharu, Vimbar, Tissue, etc.). Split equally among active members without increasing meal rate.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">
+                    ৳ {money2(totalAmenities)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-teal-50 px-3 py-2 dark:bg-teal-950/40">
+                  <p className="text-xs text-teal-700 dark:text-teal-400">Per Member ({members.length})</p>
+                  <p className="text-base font-bold text-teal-700 dark:text-teal-300">
+                    ৳ {money2(perMemberAmenityCost)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                    <th className="px-3 py-2 font-semibold">Date</th>
+                    <th className="px-3 py-2 font-semibold">Item Description</th>
+                    <th className="px-3 py-2 font-semibold">Paid By</th>
+                    <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {amenityExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                        No home amenities added for this month.
+                      </td>
+                    </tr>
+                  ) : (
+                    amenityExpenses.map((item, idx) => {
+                      const payer = members.find((m) => m.id === item.paid_by_member_id);
+                      return (
+                        <tr
+                          key={item.id || idx}
+                          className="border-b border-slate-100 text-slate-700 dark:border-slate-800/80 dark:text-slate-300"
+                        >
+                          <td className="px-3 py-2.5 font-mono text-xs text-slate-500 dark:text-slate-400">
+                            {item.expense_date || "-"}
+                          </td>
+                          <td className="px-3 py-2.5 font-semibold text-slate-900 dark:text-white">
+                            {item.description || "Home Amenities"}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              {payer?.full_name || "Unknown"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-white">
+                            ৳ {Number(item.amount || 0).toLocaleString("en-US")}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                {amenityExpenses.length > 0 ? (
+                  <tfoot>
+                    <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-700 dark:text-white">
+                      <td colSpan={3} className="px-3 py-2.5 text-right">Total Amenities</td>
+                      <td className="px-3 py-2.5 text-right text-teal-700 dark:text-teal-400">
+                        ৳ {money2(totalAmenities)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                ) : null}
+              </table>
+            </div>
+          </section>
 
 
           {/* Overall / balance check. */}

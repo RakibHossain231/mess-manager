@@ -17,10 +17,13 @@ type MealEntry = {
 };
 
 type ExpenseEntry = {
+  id?: string;
   expense_type: string;
   amount: number;
   paid_by_member_id: string | null;
   title?: string | null;
+  description?: string | null;
+  expense_date?: string | null;
 };
 
 type ChargeRow = {
@@ -172,7 +175,7 @@ export default async function ReportsPage({
   } else {
     const expensesPromise = supabase
       .from("expense_entries")
-      .select("expense_type, amount, paid_by_member_id, title")
+      .select("id, expense_type, amount, paid_by_member_id, title, description, expense_date")
       .eq("month_id", selectedMonth.id);
 
     const chargesPromise = supabase

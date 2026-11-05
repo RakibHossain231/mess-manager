@@ -77,9 +77,20 @@ export function buildSettlementRows({
     0
   );
 
+  const amenityExpenses = expenses.filter(
+    (e) => e.expense_type === "shared" && e.title === "Home Amenities"
+  );
+  const totalAmenities = amenityExpenses.reduce(
+    (sum, e) => sum + Number(e.amount || 0),
+    0
+  );
+  const perMemberAmenity =
+    members.length > 0 ? totalAmenities / members.length : 0;
+
   const totalShared = expenses
     .filter((e) => {
       if (e.expense_type !== "shared") return false;
+      if (e.title === "Home Amenities") return false;
       if (
         totalDistributedCharges > 0 &&
         STANDARD_SHARED_TITLES.has(e.title || "")
@@ -127,8 +138,13 @@ export function buildSettlementRows({
     const advance = Number(c?.advance || 0);
     const previousDue = Number(c?.previous_due || 0);
 
+    const amenitiesPaid = amenityExpenses
+      .filter((e) => e.paid_by_member_id === member.id)
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
     const mealCost = totalMeal * mealRate;
-    const sharedExpense = perMemberShared;
+    const sharedExpense = perMemberShared + perMemberAmenity;
+    const totalPayerContribution = bazarPaid + amenitiesPaid;
 
     const chargesSum =
       rent +
@@ -143,11 +159,13 @@ export function buildSettlementRows({
       discount +
       previousDue;
 
-    // What the member owes to the mess before their bazar contribution.
+    // What the member owes to the mess before their bazar/amenities contribution.
     const grossAmount = Math.round(mealCost + sharedExpense + chargesSum);
 
     // Signed: positive => receive, negative => pay (rounded to whole Taka).
-    const finalAmount = Math.round(bazarPaid - (mealCost + sharedExpense + chargesSum));
+    const finalAmount = Math.round(
+      totalPayerContribution - (mealCost + sharedExpense + chargesSum)
+    );
 
     return {
       group_id: groupId,
@@ -158,7 +176,7 @@ export function buildSettlementRows({
       total_meal: totalMeal,
       meal_rate: mealRate,
       meal_cost: mealCost,
-      bazar_paid: bazarPaid,
+      bazar_paid: totalPayerContribution,
       shared_expense: sharedExpense,
       rent,
       wifi,

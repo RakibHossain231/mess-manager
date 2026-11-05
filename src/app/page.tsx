@@ -122,12 +122,18 @@ export default async function HomePage() {
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const totalSharedBills = expenseEntries
-    .filter((item) => item.expense_type === "shared")
+    .filter((item) => item.expense_type === "shared" && item.title !== "Home Amenities")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const totalAmenities = expenseEntries
+    .filter((item) => item.expense_type === "shared" && item.title === "Home Amenities")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
   const perMemberSharedCost =
     totalMembers > 0 ? totalSharedBills / totalMembers : 0;
+  const perMemberAmenityCost =
+    totalMembers > 0 ? totalAmenities / totalMembers : 0;
 
   const activeSharedBillNames = Array.from(
     new Set(
@@ -135,6 +141,7 @@ export default async function HomePage() {
         .filter(
           (item) =>
             item.expense_type === "shared" &&
+            item.title !== "Home Amenities" &&
             Number(item.amount || 0) > 0 &&
             item.title
         )
@@ -172,9 +179,20 @@ export default async function HomePage() {
       )
       .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
+    const amenitiesPaid = expenseEntries
+      .filter(
+        (item) =>
+          item.expense_type === "shared" &&
+          item.title === "Home Amenities" &&
+          item.paid_by_member_id === memberItem.id
+      )
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
     const estimatedMealCost = totalMeal * mealRate;
     const sharedShare = perMemberSharedCost;
-    const estimatedBalance = bazarPaid - estimatedMealCost;
+    const amenitiesShare = perMemberAmenityCost;
+    const estimatedBalance =
+      bazarPaid + amenitiesPaid - estimatedMealCost - amenitiesShare;
 
     return {
       id: memberItem.id,
@@ -183,6 +201,8 @@ export default async function HomePage() {
       guestMeal,
       totalMeal,
       bazarPaid,
+      amenitiesPaid,
+      amenitiesShare,
       sharedShare,
       estimatedMealCost,
       estimatedBalance,
@@ -329,7 +349,14 @@ export default async function HomePage() {
                     <td className="px-4 py-4 font-medium">
                       {item.totalMeal.toFixed(1)}
                     </td>
-                    <td className="px-4 py-4">৳ {item.bazarPaid.toFixed(0)}</td>
+                    <td className="px-4 py-4">
+                      <span>৳ {item.bazarPaid.toFixed(0)}</span>
+                      {item.amenitiesPaid > 0 ? (
+                        <span className="block text-[11px] text-teal-600 dark:text-teal-400">
+                          +৳ {item.amenitiesPaid.toFixed(0)} (Amenities)
+                        </span>
+                      ) : null}
+                    </td>
 
                     {isPrivileged && (
                       <>
