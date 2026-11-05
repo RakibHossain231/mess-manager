@@ -34,6 +34,35 @@ button {
   font: inherit;
 }
 
+/* Custom sleek scrollbar for sidebar and scrollable containers */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+}
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+}
+.dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+}
+
 @media print {
   body {
     background: white;
