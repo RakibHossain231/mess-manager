@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import EditHistoryBadge, {
   type ActivityLogEntry,
@@ -239,52 +238,32 @@ export default function AmenitiesView({
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                Mess Amenities
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Shared household items split equally among active members
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900 text-right">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
-            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-              ৳ {totalAmenities.toFixed(0)}
-            </h3>
-          </div>
-          <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 shadow-sm dark:border-teal-900/60 dark:bg-teal-950/40 text-right">
-            <p className="text-xs text-teal-700 dark:text-teal-400">Per Member</p>
-            <h3 className="text-lg sm:text-xl font-bold text-teal-700 dark:text-teal-300">
-              ৳ {perMemberCost.toFixed(1)}
-            </h3>
-          </div>
-        </div>
-      </div>
-
       {/* Add Mess Amenities Entry Section */}
       {canManage ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 Add Mess Amenities Entry
               </h2>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 Supplies (Harpic, Jharu, Tissue, etc.) split equally among active members.
               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-right dark:bg-slate-800/60">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  ৳ {totalAmenities.toFixed(0)}
+                </h3>
+              </div>
+              <div className="rounded-xl bg-teal-50 px-3 py-2 text-right dark:bg-teal-950/40">
+                <p className="text-xs text-teal-700 dark:text-teal-400">Per Member</p>
+                <h3 className="text-lg font-bold text-teal-700 dark:text-teal-300">
+                  ৳ {perMemberCost.toFixed(1)}
+                </h3>
+              </div>
             </div>
           </div>
 
@@ -297,7 +276,7 @@ export default function AmenitiesView({
                 type="date"
                 value={amenityDate}
                 onChange={(e) => setAmenityDate(e.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -308,7 +287,7 @@ export default function AmenitiesView({
               <select
                 value={amenityPaidByMemberId}
                 onChange={(e) => setAmenityPaidByMemberId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
@@ -329,7 +308,7 @@ export default function AmenitiesView({
                 value={amenityAmount}
                 onChange={(e) => setAmenityAmount(e.target.value)}
                 placeholder="e.g. 250"
-                className="h-10 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -342,16 +321,16 @@ export default function AmenitiesView({
                 value={amenityItemName}
                 onChange={(e) => setAmenityItemName(e.target.value)}
                 placeholder="e.g. Harpic, Jharu, Tissue, Vimbar"
-                className="h-10 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none transition focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               onClick={handleSaveAmenity}
               disabled={amenityLoading}
-              className="rounded-xl bg-teal-700 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
             >
               {amenityLoading ? "Saving..." : "Save"}
             </button>
@@ -362,10 +341,30 @@ export default function AmenitiesView({
           </div>
         </section>
       ) : (
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            You can view amenities history. Only Admin or Manager can add or edit amenities.
-          </p>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Mess Amenities</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                You can view amenities history only.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  ৳ {totalAmenities.toFixed(0)}
+                </h3>
+              </div>
+              <div className="rounded-xl bg-teal-50 px-3 py-2 dark:bg-teal-950/40">
+                <p className="text-xs text-teal-700 dark:text-teal-400">Per Member</p>
+                <h3 className="text-lg font-bold text-teal-700 dark:text-teal-300">
+                  ৳ {perMemberCost.toFixed(1)}
+                </h3>
+              </div>
+            </div>
+          </div>
         </section>
       )}
 

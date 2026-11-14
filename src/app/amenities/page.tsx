@@ -45,7 +45,7 @@ export default async function AmenitiesPage() {
       .order("created_at", { ascending: true }),
     supabase
       .from("months")
-      .select("id, month_name, year")
+      .select("id")
       .eq("group_id", group.id)
       .eq("status", "open")
       .limit(1)

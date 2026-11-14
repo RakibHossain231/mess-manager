@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import EditHistoryBadge, { type ActivityLogEntry } from "@/components/shared/edit-history-badge";
 import { recordActivityLog } from "@/lib/activity-logger";
@@ -85,24 +83,6 @@ export default function ExpensesForm({
     }
     return map;
   }, [expenses]);
-
-  const amenityExpenses = useMemo(
-    () =>
-      expenses
-        .filter(
-          (item) =>
-            item.expense_type === "shared" &&
-            (item.title === "Mess Amenities" || item.title === "Home Amenities")
-        )
-        .sort((a, b) => (b.expense_date || "").localeCompare(a.expense_date || "")),
-    [expenses]
-  );
-
-  const totalAmenities = useMemo(
-    () =>
-      amenityExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [amenityExpenses]
-  );
 
   const bazarExpenses = useMemo(
     () => expenses.filter((item) => item.expense_type === "bazar"),
@@ -660,46 +640,6 @@ export default function ExpensesForm({
           </div>
         </section>
       )}
-
-      {/* Mess Amenities Banner Card linking to dedicated page */}
-      <section className="rounded-3xl border border-teal-200 bg-linear-to-r from-teal-50/70 to-emerald-50/70 p-5 shadow-sm dark:border-teal-900/60 dark:from-teal-950/30 dark:to-emerald-950/30">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-sm">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Mess Amenities
-                </h2>
-                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">
-                  {amenityExpenses.length} {amenityExpenses.length === 1 ? "entry" : "entries"}
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
-                Shared household items split equally among active members. Accessible directly from the sidebar.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-2xl border border-teal-200/60 bg-white/80 px-3.5 py-2 text-right dark:border-teal-800/60 dark:bg-slate-900/80">
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Total Amenities</p>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                ৳ {totalAmenities.toFixed(0)}
-              </h3>
-            </div>
-            <Link
-              href="/amenities"
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-800"
-            >
-              <span>Open Mess Amenities</span>
-              <span>→</span>
-            </Link>
-          </div>
-        </div>
-      </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div>
