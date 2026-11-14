@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import EditHistoryBadge, { type ActivityLogEntry } from "@/components/shared/edit-history-badge";
 import { recordActivityLog } from "@/lib/activity-logger";
@@ -172,24 +174,6 @@ export default function ExpensesForm({
   const [editLoading, setEditLoading] = useState(false);
   const [bazarMsg, setBazarMsg] = useState("");
   const [bazarLoading, setBazarLoading] = useState(false);
-
-  // Mess Amenities state
-  const [amenityDate, setAmenityDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [amenityPaidByMemberId, setAmenityPaidByMemberId] =
-    useState(currentUserMemberId);
-  const [amenityAmount, setAmenityAmount] = useState("");
-  const [amenityItemName, setAmenityItemName] = useState("");
-  const [amenityMsg, setAmenityMsg] = useState("");
-  const [amenityLoading, setAmenityLoading] = useState(false);
-
-  const [editingAmenityId, setEditingAmenityId] = useState<string | null>(null);
-  const [editAmenityDate, setEditAmenityDate] = useState("");
-  const [editAmenityAmount, setEditAmenityAmount] = useState("");
-  const [editAmenityItemName, setEditAmenityItemName] = useState("");
-  const [editAmenityPaidBy, setEditAmenityPaidBy] = useState("");
-  const [editAmenityLoading, setEditAmenityLoading] = useState(false);
 
   function updateSharedValue(key: string, value: string) {
     setSharedValues((prev) => ({
@@ -514,172 +498,6 @@ export default function ExpensesForm({
     router.refresh();
   }
 
-  function startAmenityEdit(item: ExpenseItem) {
-    setEditingAmenityId(item.id);
-    setEditAmenityDate(item.expense_date || "");
-    setEditAmenityAmount(String(item.amount || ""));
-    setEditAmenityItemName(item.description || "");
-    setEditAmenityPaidBy(item.paid_by_member_id || currentUserMemberId);
-    setAmenityMsg("");
-  }
-
-  function cancelAmenityEdit() {
-    setEditingAmenityId(null);
-    setEditAmenityDate("");
-    setEditAmenityAmount("");
-    setEditAmenityItemName("");
-    setEditAmenityPaidBy("");
-  }
-
-  async function handleSaveAmenity() {
-    setAmenityMsg("");
-
-    if (!canManageBazar) {
-      setAmenityMsg("Only admin or manager can add amenities.");
-      return;
-    }
-
-    if (!amenityDate) {
-      setAmenityMsg("Select date first.");
-      return;
-    }
-
-    if (!amenityPaidByMemberId) {
-      setAmenityMsg("Select member first.");
-      return;
-    }
-
-    if (!amenityAmount || Number(amenityAmount) <= 0) {
-      setAmenityMsg("Enter valid amount.");
-      return;
-    }
-
-    setAmenityLoading(true);
-
-    const { error } = await supabase.from("expense_entries").insert({
-      group_id: groupId,
-      month_id: monthId,
-      paid_by_member_id: amenityPaidByMemberId,
-      amount: Number(amenityAmount),
-      expense_type: "shared",
-      title: "Mess Amenities",
-      description: amenityItemName.trim() || "Mess Amenities",
-      expense_date: amenityDate,
-    });
-
-    setAmenityLoading(false);
-
-    if (error) {
-      setAmenityMsg(error.message);
-      return;
-    }
-
-    setAmenityMsg("Mess amenity added successfully.");
-    setAmenityAmount("");
-    setAmenityItemName("");
-    router.refresh();
-  }
-
-  async function handleSaveAmenityEdit(id: string) {
-    setAmenityMsg("");
-
-    if (!canManageBazar) {
-      setAmenityMsg("Only admin or manager can edit amenities.");
-      return;
-    }
-
-    if (!editAmenityDate) {
-      setAmenityMsg("Select date.");
-      return;
-    }
-
-    if (!editAmenityAmount || Number(editAmenityAmount) <= 0) {
-      setAmenityMsg("Enter valid amount.");
-      return;
-    }
-
-    setEditAmenityLoading(true);
-
-    const { error } = await supabase
-      .from("expense_entries")
-      .update({
-        expense_date: editAmenityDate,
-        amount: Number(editAmenityAmount),
-        description: editAmenityItemName.trim() || "Mess Amenities",
-        paid_by_member_id: editAmenityPaidBy,
-      })
-      .eq("id", id);
-
-    setEditAmenityLoading(false);
-
-    if (error) {
-      setAmenityMsg(error.message);
-      return;
-    }
-
-    if (currentUserId) {
-      const oldItem = expenses.find((e) => e.id === id);
-      const logPayload = {
-        groupId,
-        actorUserId: currentUserId,
-        action: "update_amenity",
-        targetTable: "expense_entries",
-        targetId: id,
-        oldData: {
-          amount: Number(oldItem?.amount ?? 0),
-          date: oldItem?.expense_date,
-          note: oldItem?.description,
-        },
-        newData: {
-          amount: Number(editAmenityAmount),
-          date: editAmenityDate,
-          note: editAmenityItemName.trim() || "Mess Amenities",
-        },
-      };
-      await recordActivityLog(supabase, logPayload);
-      setActivityLogs((prev) => [
-        {
-          id: crypto.randomUUID(),
-          actor_user_id: currentUserId,
-          action: "update_amenity",
-          target_table: "expense_entries",
-          target_id: id,
-          old_data: logPayload.oldData,
-          new_data: logPayload.newData,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
-    }
-
-    cancelAmenityEdit();
-    setAmenityMsg("Mess amenity updated successfully.");
-    router.refresh();
-  }
-
-  async function handleDeleteAmenity(id: string) {
-    if (!canManageBazar) {
-      setAmenityMsg("Only admin or manager can delete amenities.");
-      return;
-    }
-
-    const ok = window.confirm("Delete this amenity entry?");
-    if (!ok) return;
-
-    const { error } = await supabase
-      .from("expense_entries")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      setAmenityMsg(error.message);
-      return;
-    }
-
-    setAmenityMsg("Mess amenity deleted successfully.");
-    router.refresh();
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -843,292 +661,42 @@ export default function ExpensesForm({
         </section>
       )}
 
-      {/* Mess Amenities Entry Section */}
-      {canManageBazar ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {/* Mess Amenities Banner Card linking to dedicated page */}
+      <section className="rounded-3xl border border-teal-200 bg-linear-to-r from-teal-50/70 to-emerald-50/70 p-5 shadow-sm dark:border-teal-900/60 dark:from-teal-950/30 dark:to-emerald-950/30">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-sm">
+              <Sparkles className="h-5 w-5" />
+            </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Add Mess Amenities Entry
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Supplies (Harpic, Jharu, Tissue, etc.) split equally among active members.
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Mess Amenities
+                </h2>
+                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">
+                  {amenityExpenses.length} {amenityExpenses.length === 1 ? "entry" : "entries"}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                Shared household items split equally among active members. Accessible directly from the sidebar.
               </p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-right dark:bg-slate-800/60">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  ৳ {totalAmenities.toFixed(0)}
-                </h3>
-              </div>
-              <div className="rounded-xl bg-teal-50 px-3 py-2 text-right dark:bg-teal-950/40">
-                <p className="text-xs text-teal-700 dark:text-teal-400">Per Member</p>
-                <h3 className="text-lg font-bold text-teal-700 dark:text-teal-300">
-                  ৳ {members.length > 0 ? (totalAmenities / members.length).toFixed(1) : "0"}
-                </h3>
-              </div>
-            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                Date
-              </label>
-              <input
-                type="date"
-                value={amenityDate}
-                onChange={(e) => setAmenityDate(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl border border-teal-200/60 bg-white/80 px-3.5 py-2 text-right dark:border-teal-800/60 dark:bg-slate-900/80">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Total Amenities</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                ৳ {totalAmenities.toFixed(0)}
+              </h3>
             </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                Paid By
-              </label>
-              <select
-                value={amenityPaidByMemberId}
-                onChange={(e) => setAmenityPaidByMemberId(e.target.value)}
-                className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                Amount
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={amenityAmount}
-                onChange={(e) => setAmenityAmount(e.target.value)}
-                placeholder="e.g. 250"
-                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-
-            <div className="md:col-span-2 xl:col-span-4">
-              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                Note / Item Description
-              </label>
-              <input
-                type="text"
-                value={amenityItemName}
-                onChange={(e) => setAmenityItemName(e.target.value)}
-                placeholder="e.g. Harpic, Jharu, Tissue, Vimbar"
-                className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleSaveAmenity}
-              disabled={amenityLoading}
-              className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+            <Link
+              href="/amenities"
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-800"
             >
-              {amenityLoading ? "Saving..." : "Save"}
-            </button>
-
-            {amenityMsg && !editingAmenityId ? (
-              <p className="text-xs text-slate-600 dark:text-slate-400">{amenityMsg}</p>
-            ) : null}
-          </div>
-        </section>
-      ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Mess Amenities</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                You can view amenities history only.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total Amenities</p>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  ৳ {totalAmenities.toFixed(0)}
-                </h3>
-              </div>
-              <div className="rounded-xl bg-teal-50 px-3 py-2 dark:bg-teal-950/40">
-                <p className="text-xs text-teal-700 dark:text-teal-400">Per Member</p>
-                <h3 className="text-lg font-bold text-teal-700 dark:text-teal-300">
-                  ৳ {members.length > 0 ? (totalAmenities / members.length).toFixed(1) : "0"}
-                </h3>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Mess Amenities History */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-              Mess Amenities History
-            </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Shared household items split equally among active members (does not affect meal rate).
-            </p>
-          </div>
-
-          <div className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
-            {amenityExpenses.length} {amenityExpenses.length === 1 ? "entry" : "entries"}
-          </div>
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
-            {amenityExpenses.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                No mess amenities added yet for this month.
-              </div>
-            ) : (
-              amenityExpenses.map((expense) => {
-                const payer = members.find((m) => m.id === expense.paid_by_member_id);
-                const isEditing = editingAmenityId === expense.id;
-
-                if (isEditing) {
-                  return (
-                    <div
-                      key={expense.id}
-                      className="bg-teal-50/40 p-4 dark:bg-teal-950/30 grid gap-3 sm:grid-cols-[1fr_1.5fr_1fr_1fr_auto] items-end"
-                    >
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                          Date
-                        </label>
-                        <input
-                          type="date"
-                          value={editAmenityDate}
-                          onChange={(e) => setEditAmenityDate(e.target.value)}
-                          className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                          Item Description
-                        </label>
-                        <input
-                          type="text"
-                          value={editAmenityItemName}
-                          onChange={(e) => setEditAmenityItemName(e.target.value)}
-                          className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                          Paid By
-                        </label>
-                        <select
-                          value={editAmenityPaidBy}
-                          onChange={(e) => setEditAmenityPaidBy(e.target.value)}
-                          className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        >
-                          {members.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.full_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-                          Amount
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editAmenityAmount}
-                          onChange={(e) => setEditAmenityAmount(e.target.value)}
-                          className="h-9 w-full rounded-lg border border-slate-300 px-2 text-sm outline-none focus:border-teal-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSaveAmenityEdit(expense.id)}
-                          disabled={editAmenityLoading}
-                          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelAmenityEdit}
-                          disabled={editAmenityLoading}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div
-                    key={expense.id}
-                    className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-slate-900"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                        {expense.expense_date}
-                      </span>
-                      <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                        {expense.description || "Mess Amenities"}
-                      </span>
-                      <EditHistoryBadge
-                        logs={activityLogs.filter((l) => l.target_id === expense.id)}
-                        members={members}
-                      />
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        Paid by: {payer?.full_name || "Unknown"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4">
-                      <span className="text-base font-bold text-slate-900 dark:text-white">
-                        ৳ {Number(expense.amount).toFixed(0)}
-                      </span>
-
-                      {canManageBazar ? (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => startAmenityEdit(expense)}
-                            className="rounded-lg border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAmenity(expense.id)}
-                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs text-red-600 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+              <span>Open Mess Amenities</span>
+              <span>→</span>
+            </Link>
           </div>
         </div>
       </section>

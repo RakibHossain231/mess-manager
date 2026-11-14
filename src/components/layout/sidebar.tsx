@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   Receipt,
+  Sparkles,
   UserCircle2,
   Users,
   UtensilsCrossed,
@@ -39,6 +40,11 @@ const navItems = [
     label: "Expenses",
     href: "/expenses",
     icon: Receipt,
+  },
+  {
+    label: "Mess Amenities",
+    href: "/amenities",
+    icon: Sparkles,
   },
   {
     label: "Reserve Fund",
