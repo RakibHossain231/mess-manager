@@ -369,37 +369,51 @@ export default function ExpensesForm({
 
     if (currentUserId) {
       const oldItem = expenses.find((e) => e.id === item.id) ?? item;
-      const logPayload = {
-        groupId,
-        actorUserId: currentUserId,
-        action: "update_bazar",
-        targetTable: "expense_entries",
-        targetId: item.id,
-        oldData: {
-          amount: Number(oldItem.amount),
-          date: oldItem.expense_date,
-          note: oldItem.description,
-        },
-        newData: {
-          amount: Number(editAmount),
-          date: editDate,
-          note: editNote.trim() || null,
-        },
-      };
-      await recordActivityLog(supabase, logPayload);
-      setActivityLogs((prev) => [
-        {
-          id: crypto.randomUUID(),
-          actor_user_id: currentUserId,
+      const oldAmount = Number(oldItem.amount);
+      const newAmount = Number(editAmount);
+      const oldDate = oldItem.expense_date;
+      const newDate = editDate;
+      const oldNote = (oldItem.description || "").trim();
+      const newNote = (editNote || "").trim();
+
+      const hasChanged =
+        oldAmount !== newAmount ||
+        oldDate !== newDate ||
+        oldNote !== newNote;
+
+      if (hasChanged) {
+        const logPayload = {
+          groupId,
+          actorUserId: currentUserId,
           action: "update_bazar",
-          target_table: "expense_entries",
-          target_id: item.id,
-          old_data: logPayload.oldData,
-          new_data: logPayload.newData,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+          targetTable: "expense_entries",
+          targetId: item.id,
+          oldData: {
+            amount: oldAmount,
+            date: oldDate,
+            note: oldItem.description,
+          },
+          newData: {
+            amount: newAmount,
+            date: newDate,
+            note: editNote.trim() || null,
+          },
+        };
+        await recordActivityLog(supabase, logPayload);
+        setActivityLogs((prev) => [
+          {
+            id: crypto.randomUUID(),
+            actor_user_id: currentUserId,
+            action: "update_bazar",
+            target_table: "expense_entries",
+            target_id: item.id,
+            old_data: logPayload.oldData,
+            new_data: logPayload.newData,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
     }
 
     cancelBazarEdit();

@@ -175,37 +175,54 @@ export default function AmenitiesView({
 
     if (currentUserId) {
       const oldItem = amenities.find((e) => e.id === id);
-      const logPayload = {
-        groupId,
-        actorUserId: currentUserId,
-        action: "update_amenity",
-        targetTable: "expense_entries",
-        targetId: id,
-        oldData: {
-          amount: Number(oldItem?.amount || 0),
-          date: oldItem?.expense_date,
-          note: oldItem?.description || "Mess Amenities",
-        },
-        newData: {
-          amount: Number(editAmenityAmount),
-          date: editAmenityDate,
-          note: editAmenityItemName.trim() || "Mess Amenities",
-        },
-      };
-      await recordActivityLog(supabase, logPayload);
-      setActivityLogs((prev) => [
-        {
-          id: crypto.randomUUID(),
-          actor_user_id: currentUserId,
+      const oldAmount = Number(oldItem?.amount || 0);
+      const newAmount = Number(editAmenityAmount);
+      const oldDate = oldItem?.expense_date;
+      const newDate = editAmenityDate;
+      const oldNote = (oldItem?.description || "Mess Amenities").trim();
+      const newNote = (editAmenityItemName.trim() || "Mess Amenities").trim();
+      const oldPaidBy = oldItem?.paid_by_member_id;
+      const newPaidBy = editAmenityPaidBy || currentUserMemberId;
+
+      const hasChanged =
+        oldAmount !== newAmount ||
+        oldDate !== newDate ||
+        oldNote !== newNote ||
+        oldPaidBy !== newPaidBy;
+
+      if (hasChanged) {
+        const logPayload = {
+          groupId,
+          actorUserId: currentUserId,
           action: "update_amenity",
-          target_table: "expense_entries",
-          target_id: id,
-          old_data: logPayload.oldData,
-          new_data: logPayload.newData,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+          targetTable: "expense_entries",
+          targetId: id,
+          oldData: {
+            amount: oldAmount,
+            date: oldDate,
+            note: oldItem?.description || "Mess Amenities",
+          },
+          newData: {
+            amount: newAmount,
+            date: newDate,
+            note: editAmenityItemName.trim() || "Mess Amenities",
+          },
+        };
+        await recordActivityLog(supabase, logPayload);
+        setActivityLogs((prev) => [
+          {
+            id: crypto.randomUUID(),
+            actor_user_id: currentUserId,
+            action: "update_amenity",
+            target_table: "expense_entries",
+            target_id: id,
+            old_data: logPayload.oldData,
+            new_data: logPayload.newData,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
     }
 
     cancelAmenityEdit();

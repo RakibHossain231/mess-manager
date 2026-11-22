@@ -417,39 +417,56 @@ export default function ReserveFundView({
     }
 
     if (currentUserId) {
-      const logPayload = {
-        groupId,
-        actorUserId: currentUserId,
-        action: "update_reserve_fund",
-        targetTable: "reserve_fund_entries",
-        targetId: editingEntry.id,
-        oldData: {
-          amount: editingEntry.amount,
-          date: editingEntry.entry_date,
-          title: editingEntry.title,
-          note: editingEntry.description,
-        },
-        newData: {
-          amount: num,
-          date: editDate,
-          title: editTitle.trim() || editingEntry.title,
-          note: editDesc.trim() || null,
-        },
-      };
-      await recordActivityLog(supabase, logPayload);
-      setActivityLogs((prev) => [
-        {
-          id: crypto.randomUUID(),
-          actor_user_id: currentUserId,
+      const oldAmount = Number(editingEntry.amount);
+      const newAmount = num;
+      const oldDate = editingEntry.entry_date;
+      const newDate = editDate;
+      const oldTitle = (editingEntry.title || "").trim();
+      const newTitle = (editTitle.trim() || editingEntry.title).trim();
+      const oldNote = (editingEntry.description || "").trim();
+      const newNote = (editDesc.trim() || "").trim();
+
+      const hasChanged =
+        oldAmount !== newAmount ||
+        oldDate !== newDate ||
+        oldTitle !== newTitle ||
+        oldNote !== newNote;
+
+      if (hasChanged) {
+        const logPayload = {
+          groupId,
+          actorUserId: currentUserId,
           action: "update_reserve_fund",
-          target_table: "reserve_fund_entries",
-          target_id: editingEntry.id,
-          old_data: logPayload.oldData,
-          new_data: logPayload.newData,
-          created_at: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+          targetTable: "reserve_fund_entries",
+          targetId: editingEntry.id,
+          oldData: {
+            amount: editingEntry.amount,
+            date: editingEntry.entry_date,
+            title: editingEntry.title,
+            note: editingEntry.description,
+          },
+          newData: {
+            amount: num,
+            date: editDate,
+            title: editTitle.trim() || editingEntry.title,
+            note: editDesc.trim() || null,
+          },
+        };
+        await recordActivityLog(supabase, logPayload);
+        setActivityLogs((prev) => [
+          {
+            id: crypto.randomUUID(),
+            actor_user_id: currentUserId,
+            action: "update_reserve_fund",
+            target_table: "reserve_fund_entries",
+            target_id: editingEntry.id,
+            old_data: logPayload.oldData,
+            new_data: logPayload.newData,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
     }
 
     setEntries((prev) =>
